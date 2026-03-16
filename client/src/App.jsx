@@ -81,7 +81,7 @@ export default function App() {
     setTimeout(() => {
       setShowDatabase(false);
       setDbClosing(false);
-    }, 200);
+    }, 150);
   }, []);
 
   // Database version counter — incremented to force re-render after import

@@ -405,10 +405,10 @@ button:disabled {
 
 /* Close animations */
 .nusd-modal-overlay.closing {
-  animation: fadeOut 0.2s ease-in forwards;
+  animation: fadeOut 0.15s ease-out forwards;
 }
 .nusd-modal.closing {
-  animation: slideDown 0.2s ease-in forwards;
+  animation: slideDown 0.15s ease-out forwards;
 }
 
 /* ─── Database Rows ──────────────────────────────────────── */
