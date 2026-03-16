@@ -42,9 +42,11 @@ function align(size) {
  * @param {Uint8Array} ticket     - Raw ticket (cetk) data
  * @param {Uint8Array} tmd        - Raw TMD data
  * @param {Uint8Array[]} contents - Array of encrypted content blobs (in TMD order)
+ * @param {object} [options] - Optional settings
+ * @param {string} [options.titleId] - Title ID for boot2 detection
  * @returns {Uint8Array} The complete WAD file
  */
-export function packWAD(certChain, ticket, tmd, contents) {
+export function packWAD(certChain, ticket, tmd, contents, options) {
   // Calculate content data size (each content aligned to 0x40)
   let dataSize = 0;
   for (let i = 0; i < contents.length; i++) {
@@ -54,8 +56,10 @@ export function packWAD(certChain, ticket, tmd, contents) {
   // Build WAD header (0x20 bytes)
   const header = new ArrayBuffer(0x20);
   const hv = new DataView(header);
+  // boot2 (TID 0000000100000001) uses type "ib" instead of "Is"
+  const isBoot2 = options?.titleId?.toLowerCase() === '0000000100000001';
   hv.setUint32(0x00, 0x00000020);        // header size
-  hv.setUint16(0x04, 0x4973);            // "Is" — installable WAD type
+  hv.setUint16(0x04, isBoot2 ? 0x6962 : 0x4973); // "ib" for boot2, "Is" for normal
   hv.setUint16(0x06, 0x0000);            // padding
   hv.setUint32(0x08, certChain.length);   // cert chain size
   hv.setUint32(0x0C, 0x00000000);        // reserved
@@ -319,9 +323,14 @@ export function generateWadFilename(titleId, version, name, template) {
 
   // Named titles
   if (name) {
-    const safeName = name.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+    const safeName = sanitizeFilename(name);
     return `${safeName}-${tid.toUpperCase()}-v${vStr}.wad`;
   }
 
   return `${tid.toUpperCase()}-v${vStr}.wad`;
+}
+
+/** Strip characters that are invalid in filenames across platforms */
+function sanitizeFilename(name) {
+  return name.replace(/[/\\:*"?<>|]/g, '').trim();
 }

@@ -191,6 +191,11 @@ export default function App() {
       return;
     }
 
+    if (!packWad && !keepEncrypted && !decryptContents) {
+      log('Error: Select at least one output option (Pack WAD, Keep encrypted, or Decrypt).', 'error');
+      return;
+    }
+
     setIsDownloading(true);
     setLogs([]);
     setTmdInfo(null);
@@ -284,15 +289,23 @@ export default function App() {
         log('Packing WAD...');
 
         const tmdBytes = new Uint8Array(tmdData);
-        const certs = extractCertsFromTMD(tmdBytes, tmd.numContents);
 
+        // Download proper cert chain from System Menu 4.3U
         let certChain;
-        if (certs && certs.length > 0) {
-          certChain = certs;
-          log(`  Certificate chain extracted (${certs.length} bytes)`);
-        } else {
-          certChain = new Uint8Array(0);
-          log('  No certificate chain found in TMD', 'warning');
+        try {
+          log('  Downloading certificate chain...');
+          certChain = await client.downloadCertChain(onRetry);
+          log(`  Certificate chain obtained (${certChain.length} bytes)`);
+        } catch {
+          // Fallback: extract from current title's TMD
+          const certs = extractCertsFromTMD(tmdBytes, tmd.numContents);
+          if (certs && certs.length > 0) {
+            certChain = certs;
+            log(`  Certificate chain extracted from TMD (${certs.length} bytes)`, 'warning');
+          } else {
+            certChain = new Uint8Array(0);
+            log('  No certificate chain available', 'warning');
+          }
         }
 
         const ticketBytes = new Uint8Array(ticketData);
@@ -361,8 +374,9 @@ export default function App() {
 
         // Pack WAD (Wii/vWii) or TAD (DSi)
         const isDSi = platform === 'dsi';
-        const packFn = isDSi ? packTAD : packWAD;
-        const archiveData = packFn(certChain, finalTicketBytes, tmdBytes, contentBuffers);
+        const archiveData = isDSi
+          ? packTAD(certChain, finalTicketBytes, tmdBytes, contentBuffers)
+          : packWAD(certChain, finalTicketBytes, tmdBytes, contentBuffers, { titleId: tid });
         const dbTitle = lookupTitle(tid);
         const ext = isDSi ? '.tad' : (iosPatchApplied ? '.patched.wad' : '.wad');
         const filename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate).replace(/\.wad$/, ext);

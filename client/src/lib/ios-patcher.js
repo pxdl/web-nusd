@@ -16,8 +16,12 @@ export const PATCHES = {
     name: 'Trucha Bug (Fake Signing)',
     description: 'Allows installing unsigned content',
     patterns: [
+      // Original NUSD patterns (some IOS versions)
       { search: [0x32, 0x07, 0x23, 0xA2], offset: 1, replace: [0x00] },
       { search: [0x32, 0x07, 0x4B, 0x0B], offset: 1, replace: [0x00] },
+      // libWiiPy patterns (other IOS versions)
+      { search: [0x20, 0x07, 0x23, 0xA2], offset: 1, replace: [0x00] },
+      { search: [0x20, 0x07, 0x4B, 0x0B], offset: 1, replace: [0x00] },
     ],
   },
   esIdentify: {
@@ -38,7 +42,7 @@ export const PATCHES = {
     name: 'Version Patch',
     description: 'Allows downgrading to older versions',
     patterns: [
-      { search: [0xD2, 0x01, 0x4E, 0x56], offset: 2, replace: [0x46, 0xE0] },
+      { search: [0xD2, 0x01, 0x4E, 0x56], offset: 0, replace: [0xE0] },
     ],
   },
 };

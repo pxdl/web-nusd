@@ -162,6 +162,52 @@ export class NUSClient {
   }
 
   /**
+   * Download the standard Wii certificate chain from System Menu 4.3U.
+   *
+   * The cert chain is built from 3 certificates:
+   *   - CA cert (from ticket, after XS cert)
+   *   - CP cert (from TMD, at known offset)
+   *   - XS cert (from ticket, at known offset)
+   *
+   * This matches libWiiPy's approach of using SM 4.3U as the cert source,
+   * producing more reliable WADs than extracting certs from arbitrary TMDs.
+   *
+   * @param {function} [onRetry] - Retry callback
+   * @returns {Promise<Uint8Array>} Certificate chain (CA + CP + XS)
+   */
+  async downloadCertChain(onRetry) {
+    const SM_TID = '0000000100000002';
+    const SM_VER = 513; // System Menu 4.3U
+
+    const tmdData = await this.fetch(`${SM_TID}/tmd/${SM_VER}`, onRetry);
+    const cetkData = await this.fetch(`${SM_TID}/cetk`, onRetry);
+
+    const cetk = new Uint8Array(cetkData);
+    const tmd = new Uint8Array(tmdData);
+
+    // Certificate offsets (RSA-2048 signed):
+    //   Ticket: XS cert at 0x2A4, length 768 bytes; CA cert follows at 0x2A4+768
+    //   TMD:    CP cert at 0x328, length 768 bytes
+    const XS_OFFSET = 0x2A4;
+    const CERT_LEN = 768;
+    const CA_OFFSET = XS_OFFSET + CERT_LEN; // 0x5A4
+    const CA_LEN = 1024;
+    const CP_OFFSET = 0x328;
+
+    const caCert = cetk.slice(CA_OFFSET, CA_OFFSET + CA_LEN);
+    const cpCert = tmd.slice(CP_OFFSET, CP_OFFSET + CERT_LEN);
+    const xsCert = cetk.slice(XS_OFFSET, XS_OFFSET + CERT_LEN);
+
+    // Assemble: CA + CP + XS (standard order for WAD cert chains)
+    const chain = new Uint8Array(CA_LEN + CERT_LEN + CERT_LEN);
+    chain.set(caCert, 0);
+    chain.set(cpCert, CA_LEN);
+    chain.set(xsCert, CA_LEN + CERT_LEN);
+
+    return chain;
+  }
+
+  /**
    * Check if the proxy server is reachable.
    * @returns {Promise<boolean>}
    */
