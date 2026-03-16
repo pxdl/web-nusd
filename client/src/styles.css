@@ -413,6 +413,19 @@ button:disabled {
   animation: slideDown 0.15s ease-out forwards;
 }
 
+/* ─── Version Chips ──────────────────────────────────────── */
+.nusd-version-chips {
+  animation: fadeIn 0.2s ease-out;
+}
+.nusd-version-chip:hover:not(:disabled):not(.active) {
+  background: var(--surface-hover) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+.nusd-version-chip.active {
+  box-shadow: 0 1px 4px var(--accent-glow);
+}
+
 /* ─── Database Tree ──────────────────────────────────────── */
 .nusd-tree-category {
   transition: background 0.15s;

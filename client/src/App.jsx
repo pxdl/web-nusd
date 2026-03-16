@@ -43,6 +43,7 @@ export default function App() {
   const [commonKeyHex, setCommonKeyHex] = useState('');
   const [useWiiUCDN, setUseWiiUCDN] = useState(false);
   const [proxyUrl, setProxyUrl] = useState('http://localhost:3001');
+  const [availableVersions, setAvailableVersions] = useState([]);
   const [wadNameTemplate, setWadNameTemplate] = useState('');
 
   // IOS patching
@@ -170,6 +171,7 @@ export default function App() {
   // ─── Database Selection ─────────────────────
   const selectTitle = (title) => {
     setTitleId(title.titleId);
+    setAvailableVersions(title.versions || []);
     if (title.versions.length > 0) {
       setVersion(String(title.versions[title.versions.length - 1]));
     } else {
@@ -754,7 +756,7 @@ export default function App() {
                     placeholder="0000000100000002"
                     maxLength={16}
                     value={titleId}
-                    onChange={e => setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, ''))}
+                    onChange={e => { setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, '')); setAvailableVersions([]); }}
                     disabled={isDownloading}
                   />
                   <button
@@ -789,6 +791,24 @@ export default function App() {
                   onChange={e => setVersion(e.target.value.replace(/[^0-9]/g, ''))}
                   disabled={isDownloading}
                 />
+                {availableVersions.length > 1 && (
+                  <div className="nusd-version-chips" style={styles.versionChips}>
+                    {availableVersions.map(v => (
+                      <button
+                        key={v}
+                        className={`nusd-version-chip ${String(v) === version ? 'active' : ''}`}
+                        style={{
+                          ...styles.versionChip,
+                          ...(String(v) === version ? styles.versionChipActive : {}),
+                        }}
+                        onClick={() => setVersion(String(v))}
+                        disabled={isDownloading}
+                      >
+                        v{v}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Options */}
@@ -1746,6 +1766,29 @@ const styles = {
     padding: '1px 5px',
     borderRadius: 3,
     textTransform: 'uppercase',
+  },
+  // Version chips
+  versionChips: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  versionChip: {
+    background: COLORS.surfaceLight,
+    color: COLORS.textDim,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 12,
+    padding: '2px 10px',
+    fontFamily: '"Fira Code", monospace',
+    fontSize: 11,
+    fontWeight: 500,
+    cursor: 'pointer',
+    lineHeight: 1.6,
+  },
+  versionChipActive: {
+    background: COLORS.accent,
+    color: '#ffffff',
+    borderColor: COLORS.accentDim,
   },
   // Tree view
   treeCategory: {
