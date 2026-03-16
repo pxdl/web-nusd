@@ -121,7 +121,7 @@ export default function App() {
   // After database loads, try to match the current title ID to a database entry
   useEffect(() => {
     if (titleId.length === 16 && !selectedTitle) {
-      const match = lookupTitle(titleId);
+      const match = lookupTitle(titleId, version);
       if (match) {
         setSelectedTitle(match);
         setAvailableVersions(match.versions || []);
@@ -187,7 +187,7 @@ export default function App() {
   // Check for danger warnings when title ID changes
   useEffect(() => {
     if (titleId.length === 16) {
-      const title = lookupTitle(titleId);
+      const title = lookupTitle(titleId, version);
       setDangerWarning(title?.danger || null);
     } else {
       setDangerWarning(null);
@@ -435,7 +435,7 @@ export default function App() {
         const archiveData = isDSi
           ? packTAD(certChain, finalTicketBytes, tmdBytes, contentBuffers)
           : packWAD(certChain, finalTicketBytes, tmdBytes, contentBuffers, { titleId: tid });
-        const dbTitle = lookupTitle(tid);
+        const dbTitle = lookupTitle(tid, tmd.titleVersion);
         const ext = isDSi ? '.tad' : (iosPatchApplied ? '.patched.wad' : '.wad');
         const filename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate).replace(/\.wad$/, ext);
         downloadBlob(archiveData, filename);
@@ -590,7 +590,7 @@ export default function App() {
           const ticketBytes = new Uint8Array(ticketData);
           const certs = extractCertsFromTMD(tmdBytes, tmd.numContents) || new Uint8Array(0);
           const wadData = packWAD(certs, ticketBytes, tmdBytes, contentBuffers);
-          const dbTitle = lookupTitle(entry.titleId);
+          const dbTitle = lookupTitle(entry.titleId, tmd.titleVersion);
           const filename = generateWadFilename(entry.titleId, tmd.titleVersion, dbTitle?.name);
           downloadBlob(wadData, filename);
           log(`  WAD saved: ${filename}`, 'success');
@@ -895,7 +895,7 @@ export default function App() {
                       setManualEntry(false);
                       // Try to match the typed title ID to a database entry
                       if (titleId.length === 16) {
-                        const match = lookupTitle(titleId);
+                        const match = lookupTitle(titleId, version);
                         if (match) {
                           setSelectedTitle(match);
                           setAvailableVersions(match.versions || []);

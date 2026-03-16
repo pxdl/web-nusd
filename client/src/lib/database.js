@@ -442,9 +442,30 @@ export function searchTitles(query, category, region) {
  * @param {string} titleId
  * @returns {object|null}
  */
-export function lookupTitle(titleId) {
+/**
+ * Lookup a title by ID, optionally narrowing by version.
+ * When multiple entries share the same TID (e.g., System Menu per region),
+ * the version is used to find the correct region-specific entry.
+ *
+ * @param {string} titleId
+ * @param {number|string} [version] - Version to match against
+ * @returns {object|null}
+ */
+export function lookupTitle(titleId, version) {
   const normalized = titleId.toLowerCase().replace(/\s/g, '');
-  return TITLE_DATABASE.find(t => t.titleId === normalized) || null;
+  const matches = TITLE_DATABASE.filter(t => t.titleId === normalized);
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0];
+
+  // Multiple entries with same TID — try to match by version
+  if (version !== undefined && version !== '') {
+    const v = Number(version);
+    const byVersion = matches.find(t => t.versions.includes(v));
+    if (byVersion) return byVersion;
+  }
+
+  // Fallback to first match
+  return matches[0];
 }
 
 /**
