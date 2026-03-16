@@ -1,40 +1,37 @@
 /* ═══════════════════════════════════════════════════════════
-   Web NUS Downloader — Wii-Inspired Theme
-   Aesthetic: Skeuomorphic Wii System Menu
+   Web NUS Downloader — Wii System Menu Theme
+   Aesthetic: Nintendo Wii Channel Grid / System Menu
    ═══════════════════════════════════════════════════════════ */
 
 /* ─── CSS Variables ──────────────────────────────────────── */
 :root {
-  --bg-top: #b8dce8;
-  --bg-bottom: #dceef6;
-  --surface: #ffffff;
-  --surface-hover: #f0f7fb;
-  --surface-pressed: #e4eef5;
-  --accent: #009ec2;
-  --accent-light: #33b8d8;
-  --accent-dark: #007a9a;
-  --accent-glow: rgba(0, 158, 194, 0.15);
-  --accent-glow-strong: rgba(0, 158, 194, 0.3);
+  --bg: #dde8f0;
+  --surface: #f8f8f8;
+  --surface-hover: #eef3f7;
+  --accent: #7dcde8;
+  --accent-dim: #5cb8d4;
+  --accent-glow: rgba(125, 205, 232, 0.18);
+  --accent-glow-strong: rgba(125, 205, 232, 0.35);
   --warning: #e8a317;
   --error: #d94040;
-  --success: #28a060;
-  --text: #2c3a48;
-  --text-dim: #6a7f90;
-  --text-light: #8da0b0;
-  --border: #c8d8e4;
-  --border-light: #dce8f0;
+  --success: #5cb85c;
+  --text: #474747;
+  --text-dim: #909090;
+  --text-light: #b0b0b0;
+  --border: #b8b7bc;
+  --border-light: #d2d6db;
   --danger: #d94040;
-  --danger-bg: rgba(217, 64, 64, 0.08);
-  --shadow-sm: 0 1px 3px rgba(0, 40, 80, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 40, 80, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 40, 80, 0.10);
-  --shadow-xl: 0 16px 48px rgba(0, 40, 80, 0.14);
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 5px;
-  --font-display: 'Rajdhani', 'Segoe UI', sans-serif;
+  --danger-bg: rgba(217, 64, 64, 0.06);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 4px 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 4px 6px 30px rgba(0, 0, 0, 0.13);
+  --shadow-xl: 6px 8px 40px rgba(0, 0, 0, 0.16);
+  --radius: 25px;
+  --radius-sm: 18px;
+  --radius-xs: 12px;
+  --font-display: 'Nunito', 'Varela Round', sans-serif;
   --font-mono: 'Fira Code', 'SF Mono', 'Consolas', monospace;
-  --font-body: 'Rajdhani', -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Nunito', -apple-system, 'Segoe UI', sans-serif;
 }
 
 /* ─── Reset & Base ───────────────────────────────────────── */
@@ -48,10 +45,10 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background: linear-gradient(170deg, var(--bg-top), var(--bg-bottom));
+  background: var(--bg);
   background-attachment: fixed;
   color: var(--text);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   scrollbar-gutter: stable;
@@ -63,8 +60,8 @@ body::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(255, 255, 255, 0.25) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 50%, rgba(255, 255, 255, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
   animation: bgShift 20s ease-in-out infinite alternate;
@@ -83,7 +80,7 @@ body::before {
 
 /* ─── Selection ──────────────────────────────────────────── */
 ::selection {
-  background: rgba(0, 158, 194, 0.25);
+  background: rgba(125, 205, 232, 0.3);
   color: var(--text);
 }
 
@@ -94,7 +91,7 @@ body::before {
   background: var(--border);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
 /* ─── Animations ─────────────────────────────────────────── */
 @keyframes fadeIn {
@@ -103,13 +100,13 @@ body::before {
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 4px var(--accent-glow); }
-  50% { box-shadow: 0 0 14px var(--accent-glow-strong); }
+  0%, 100% { box-shadow: 0 0 6px var(--accent-glow); }
+  50% { box-shadow: 0 0 20px var(--accent-glow-strong); }
 }
 
 @keyframes progressShimmer {
@@ -128,8 +125,8 @@ body::before {
 }
 
 @keyframes slideDown {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(16px) scale(0.97); }
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
 @keyframes typeIn {
@@ -150,22 +147,25 @@ body::before {
 /* ─── Global Input Styles ────────────────────────────────── */
 input, select {
   transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: var(--font-body);
 }
 input:focus, select:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 0 12px var(--accent-glow);
   outline: none;
 }
 input::placeholder {
   color: var(--text-light);
   opacity: 0.7;
+  font-family: var(--font-body);
 }
 
 /* ─── Global Button Base ─────────────────────────────────── */
 button {
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   position: relative;
+  font-family: var(--font-body);
 }
 button:disabled {
   cursor: not-allowed;
@@ -176,7 +176,7 @@ button:disabled {
 .nusd-header {
   position: relative;
   backdrop-filter: blur(12px);
-  background: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   border-bottom: 1px solid var(--border-light) !important;
 }
 
@@ -201,13 +201,13 @@ button:disabled {
   height: 3px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(0, 158, 194, 0.15) 8%,
+    rgba(125, 205, 232, 0.2) 8%,
     var(--accent) 25%,
-    #4de0ff 40%,
+    #a8e4f6 40%,
     #fff 50%,
-    #4de0ff 60%,
+    #a8e4f6 60%,
     var(--accent) 75%,
-    rgba(0, 158, 194, 0.15) 92%,
+    rgba(125, 205, 232, 0.2) 92%,
     transparent 100%
   );
   border-radius: 3px;
@@ -226,8 +226,8 @@ button:disabled {
   height: 16px;
   background: radial-gradient(
     ellipse at center top,
-    rgba(0, 158, 194, 0.25) 0%,
-    rgba(0, 158, 194, 0.08) 40%,
+    rgba(125, 205, 232, 0.3) 0%,
+    rgba(125, 205, 232, 0.1) 40%,
     transparent 70%
   );
   border-radius: 50%;
@@ -237,50 +237,50 @@ button:disabled {
 }
 
 @keyframes uguisu {
-  /* Phase 1: "Ho~" — introductory whistle pulse (0–5.3%) */
+  /* Phase 1: "Ho~" — introductory whistle pulse (0-5.3%) */
   0%    { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
   2.6%  { opacity: 0.50; box-shadow:
-            0 0 8px rgba(0, 158, 194, 0.5),
-            0 0 20px rgba(0, 158, 194, 0.3),
-            0 0 40px rgba(0, 158, 194, 0.1); }
+            0 0 8px rgba(125, 205, 232, 0.5),
+            0 0 20px rgba(125, 205, 232, 0.3),
+            0 0 40px rgba(125, 205, 232, 0.1); }
   5.3%  { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 
-  /* Phase 2: "-ho-" — softer secondary pulse (5.3–8.4%) */
+  /* Phase 2: "-ho-" — softer secondary pulse (5.3-8.4%) */
   6.8%  { opacity: 0.32; box-shadow:
-            0 0 6px rgba(0, 158, 194, 0.4),
-            0 0 16px rgba(0, 158, 194, 0.2); }
+            0 0 6px rgba(125, 205, 232, 0.4),
+            0 0 16px rgba(125, 205, 232, 0.2); }
   8.4%  { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 
-  /* Phase 3: (breath) — dim pause (8.4–21.7%) */
+  /* Phase 3: (breath) — dim pause (8.4-21.7%) */
   21.7% { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 
-  /* Phase 4: "ho~~ke~~" — slow crescendo + sustained hold (21.7–59.7%) */
+  /* Phase 4: "ho~~ke~~" — slow crescendo + sustained hold (21.7-59.7%) */
   35%   { opacity: 0.47; box-shadow:
-            0 0 8px rgba(0, 158, 194, 0.5),
-            0 0 24px rgba(0, 158, 194, 0.3),
-            0 0 48px rgba(0, 158, 194, 0.1); }
+            0 0 8px rgba(125, 205, 232, 0.5),
+            0 0 24px rgba(125, 205, 232, 0.3),
+            0 0 48px rgba(125, 205, 232, 0.1); }
   59.7% { opacity: 0.47; box-shadow:
-            0 0 8px rgba(0, 158, 194, 0.5),
-            0 0 24px rgba(0, 158, 194, 0.3),
-            0 0 48px rgba(0, 158, 194, 0.1); }
+            0 0 8px rgba(125, 205, 232, 0.5),
+            0 0 24px rgba(125, 205, 232, 0.3),
+            0 0 48px rgba(125, 205, 232, 0.1); }
 
-  /* Phase 5: "-kyo!" — rapid trill (59.7–64.1%) */
+  /* Phase 5: "-kyo!" — rapid trill (59.7-64.1%) */
   60.8% { opacity: 0.25; box-shadow:
-            0 0 4px rgba(0, 158, 194, 0.3),
-            0 0 12px rgba(0, 158, 194, 0.15); }
+            0 0 4px rgba(125, 205, 232, 0.3),
+            0 0 12px rgba(125, 205, 232, 0.15); }
   61.9% { opacity: 0.47; box-shadow:
-            0 0 8px rgba(0, 158, 194, 0.5),
-            0 0 24px rgba(0, 158, 194, 0.3),
-            0 0 48px rgba(0, 158, 194, 0.1); }
+            0 0 8px rgba(125, 205, 232, 0.5),
+            0 0 24px rgba(125, 205, 232, 0.3),
+            0 0 48px rgba(125, 205, 232, 0.1); }
   63.0% { opacity: 0.25; box-shadow:
-            0 0 4px rgba(0, 158, 194, 0.3),
-            0 0 12px rgba(0, 158, 194, 0.15); }
+            0 0 4px rgba(125, 205, 232, 0.3),
+            0 0 12px rgba(125, 205, 232, 0.15); }
   64.1% { opacity: 0.47; box-shadow:
-            0 0 8px rgba(0, 158, 194, 0.5),
-            0 0 24px rgba(0, 158, 194, 0.3),
-            0 0 48px rgba(0, 158, 194, 0.1); }
+            0 0 8px rgba(125, 205, 232, 0.5),
+            0 0 24px rgba(125, 205, 232, 0.3),
+            0 0 48px rgba(125, 205, 232, 0.1); }
 
-  /* Phase 6: fade + rest (64.1–100%) */
+  /* Phase 6: fade + rest (64.1-100%) */
   65.2% { opacity: 0.12; box-shadow: 0 0 4px var(--accent-glow); }
   100%  { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 }
@@ -308,7 +308,9 @@ button:disabled {
 }
 
 .nusd-title {
-  color: var(--accent-dark) !important;
+  color: var(--text) !important;
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
 }
 
 /* ─── Status Dot ─────────────────────────────────────────── */
@@ -323,8 +325,10 @@ button:disabled {
 .nusd-tab {
   position: relative;
   font-family: var(--font-display) !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border-radius: 14px 14px 0 0;
+  letter-spacing: 0.02em;
 }
 .nusd-tab::after {
   content: '';
@@ -332,97 +336,96 @@ button:disabled {
   bottom: -1px;
   left: 50%;
   height: 3px;
-  background: linear-gradient(90deg, transparent, var(--accent) 30%, #4de0ff 50%, var(--accent) 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, #a8e4f6 50%, var(--accent) 70%, transparent);
   border-radius: 3px 3px 0 0;
   transform: translateX(-50%);
-  /* Animation runs continuously on all tabs — never restarts on tab switch */
   animation: uguisu 9s ease-in-out infinite;
-  /* Inactive: hidden via width */
   width: 0;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .nusd-tab:hover {
-  color: var(--accent) !important;
+  color: var(--accent-dim) !important;
+  background: rgba(125, 205, 232, 0.08);
 }
 .nusd-tab.active::after {
   width: 100%;
 }
 .nusd-tab.active {
-  color: var(--accent-dark) !important;
+  color: var(--text) !important;
+  background: rgba(125, 205, 232, 0.1);
 }
 
 /* ─── Panels (Wii Channel Tiles) ─────────────────────────── */
 .nusd-panel {
   background: var(--surface) !important;
-  border: 1px solid var(--border-light) !important;
+  border: 6px solid var(--border) !important;
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-md);
+  transition: border-color 0.2s, box-shadow 0.3s;
+}
+.nusd-panel:hover {
+  border-color: var(--accent) !important;
+  box-shadow: var(--shadow-md), 0 0 30px 10px rgba(125, 205, 232, 0.15);
 }
 
-/* Card shuffle animation on the controls panel */
+/* Wii pop-in animation on panels */
 .nusd-panel-animated {
-  animation: cardDeal 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: bottom left;
+  animation: wiiPopIn 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes cardDeal {
-  0% {
-    opacity: 0;
-    transform: translateY(30px) scale(0.98);
-  }
-  40% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+@keyframes wiiPopIn {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 /* ─── Toggle Buttons (Platform Selector) ─────────────────── */
 .nusd-toggle {
   font-family: var(--font-display) !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
   letter-spacing: 0.02em;
+  border-radius: 2rem !important;
 }
 .nusd-toggle:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-radius: 2rem !important;
 }
 .nusd-toggle:last-child {
-  border-radius: 0 var(--radius-sm) 0 var(--radius-sm);
+  border-radius: 2rem !important;
 }
 .nusd-toggle:not(:first-child) {
-  margin-left: -1px;
+  margin-left: 6px;
 }
 .nusd-toggle:hover:not(:disabled):not(.active) {
-  background: var(--surface-hover) !important;
-  color: var(--accent) !important;
+  background: linear-gradient(to bottom, #f8f9fa, #eceeef) !important;
+  border-color: var(--accent) !important;
+  color: var(--text) !important;
+  box-shadow: 0 2px 10px rgba(125, 205, 232, 0.25);
   z-index: 2;
+  transform: scale(1.03);
 }
 .nusd-toggle.active {
   z-index: 3;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 8px var(--accent-glow);
+  box-shadow: 0 0 12px rgba(125, 205, 232, 0.3);
 }
 
-/* ─── Primary Button (Wii-style rounded teal) ────────────── */
+/* ─── Primary Button (Wii-style pill) ────────────────────── */
 .nusd-btn-primary {
   font-family: var(--font-display) !important;
-  font-size: 16px !important;
-  letter-spacing: 0.06em;
-  border-radius: var(--radius) !important;
-  box-shadow: var(--shadow-md), 0 2px 8px var(--accent-glow);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
+  border-radius: 2rem !important;
+  box-shadow: 0 2px 8px rgba(125, 205, 232, 0.2);
 }
 .nusd-btn-primary:hover:not(:disabled) {
-  box-shadow: var(--shadow-lg), 0 4px 16px var(--accent-glow-strong);
-  transform: translateY(-2px);
-  filter: brightness(1.08);
+  background: linear-gradient(to bottom, #f8f9fa, #eceeef) !important;
+  border-color: var(--accent-dim) !important;
+  box-shadow: 0 0 50px 25px rgba(173, 216, 230, 0.25), 0 2px 12px rgba(125, 205, 232, 0.35);
+  transform: scale(1.03);
 }
 .nusd-btn-primary:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.97);
   box-shadow: var(--shadow-sm);
-  filter: brightness(0.95);
 }
 /* Shimmer sweep */
 .nusd-btn-primary::before {
@@ -432,9 +435,9 @@ button:disabled {
   background: linear-gradient(
     105deg,
     transparent 30%,
-    rgba(255, 255, 255, 0.12) 45%,
-    rgba(255, 255, 255, 0.18) 50%,
-    rgba(255, 255, 255, 0.12) 55%,
+    rgba(255, 255, 255, 0.15) 45%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.15) 55%,
     transparent 70%
   );
   background-size: 250% 100%;
@@ -448,23 +451,27 @@ button:disabled {
 
 /* ─── Secondary & Small Buttons ──────────────────────────── */
 .nusd-btn-secondary:hover:not(:disabled) {
-  background: var(--surface-hover) !important;
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(to bottom, #f8f9fa, #eceeef) !important;
+  border-color: var(--accent-dim) !important;
+  color: var(--text) !important;
+  box-shadow: 0 2px 10px rgba(125, 205, 232, 0.3);
+  transform: scale(1.03);
 }
 .nusd-btn-small:hover:not(:disabled) {
-  background: var(--surface-hover) !important;
+  background: linear-gradient(to bottom, #f8f9fa, #eceeef) !important;
   border-color: var(--accent) !important;
-  color: var(--accent) !important;
+  color: var(--text) !important;
+  box-shadow: 0 2px 8px rgba(125, 205, 232, 0.2);
+  transform: scale(1.02);
 }
 
 /* ─── Checkbox ───────────────────────────────────────────── */
 .nusd-checkbox-box {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px !important;
 }
 .nusd-checkbox-box.checked {
-  box-shadow: 0 1px 4px var(--accent-glow-strong);
+  box-shadow: 0 1px 6px var(--accent-glow-strong);
   transform: scale(1.08);
 }
 
@@ -472,24 +479,21 @@ button:disabled {
 .nusd-info-card {
   animation: fadeIn 0.3s ease-out;
   position: relative;
-  border-radius: var(--radius-sm) !important;
+  border-radius: 20px !important;
+  border: 4px solid var(--border) !important;
+  background: #f6f7f8 !important;
+  box-shadow: 3px 3px 14px rgba(0, 0, 0, 0.07);
 }
 .nusd-info-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: linear-gradient(180deg, var(--accent), var(--accent-dark));
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  /* Remove the old left-bar accent stripe in favor of Wii tile style */
+  display: none;
 }
 
 /* ─── Progress Bar ───────────────────────────────────────── */
 .nusd-progress-fill {
   position: relative;
   box-shadow: 0 0 8px var(--accent-glow);
-  border-radius: 3px !important;
+  border-radius: 6px !important;
 }
 .nusd-progress-fill::after {
   content: '';
@@ -498,7 +502,7 @@ button:disabled {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.3) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -521,36 +525,30 @@ button:disabled {
 .nusd-danger-banner {
   position: relative;
   animation: fadeIn 0.3s ease-out;
-  border-radius: var(--radius-sm) !important;
+  border-radius: 16px !important;
 }
 .nusd-danger-banner::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--danger);
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  display: none;
 }
 
 /* ─── Tags ───────────────────────────────────────────────── */
 .nusd-tag-danger {
   animation: tagPulse 2.5s ease-in-out infinite;
+  border-radius: 2rem;
 }
 
 /* ─── Modal ──────────────────────────────────────────────── */
 .nusd-modal-overlay {
   animation: fadeIn 0.15s ease-out;
   backdrop-filter: blur(6px);
-  background: rgba(44, 58, 72, 0.35) !important;
+  background: rgba(71, 71, 71, 0.3) !important;
   overscroll-behavior: contain;
 }
 .nusd-modal {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: wiiPopIn 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   box-shadow: var(--shadow-xl);
   border-radius: var(--radius) !important;
-  border: 1px solid var(--border-light) !important;
+  border: 6px solid var(--border) !important;
   background: var(--surface) !important;
 }
 
@@ -567,20 +565,23 @@ button:disabled {
   animation: fadeIn 0.2s ease-out;
 }
 .nusd-version-chip:hover:not(:disabled):not(.active) {
-  background: var(--surface-hover) !important;
+  background: linear-gradient(to bottom, #f8f9fa, #eceeef) !important;
   border-color: var(--accent) !important;
-  color: var(--accent) !important;
+  color: var(--text) !important;
+  box-shadow: 0 2px 8px rgba(125, 205, 232, 0.2);
+  transform: scale(1.05);
 }
 .nusd-version-chip.active {
-  box-shadow: 0 1px 4px var(--accent-glow);
+  box-shadow: 0 0 10px rgba(125, 205, 232, 0.3);
 }
 
 /* ─── Database Tree ──────────────────────────────────────── */
 .nusd-tree-category {
   transition: background 0.15s;
+  font-family: var(--font-display);
 }
 .nusd-tree-category:hover {
-  background: var(--surface-hover) !important;
+  background: rgba(125, 205, 232, 0.1) !important;
 }
 
 .nusd-tree-arrow {
@@ -602,33 +603,35 @@ button:disabled {
 /* ─── Database Rows ──────────────────────────────────────── */
 .nusd-db-row {
   transition: background 0.15s, padding-left 0.2s;
+  font-family: var(--font-display);
 }
 .nusd-db-row:hover {
-  background: var(--surface-hover) !important;
+  background: rgba(125, 205, 232, 0.08) !important;
   padding-left: 22px !important;
 }
 
 /* ─── Error Banner ───────────────────────────────────────── */
 .nusd-error-banner {
   animation: fadeIn 0.3s ease-out;
-  border-radius: var(--radius-sm) !important;
+  border-radius: 16px !important;
 }
 
 /* ─── Batch List Items ───────────────────────────────────── */
 .nusd-batch-item {
   transition: background 0.1s;
   border-radius: var(--radius-xs);
-  padding: 3px 6px !important;
+  padding: 4px 8px !important;
 }
 .nusd-batch-item:hover {
-  background: var(--surface-hover);
+  background: rgba(125, 205, 232, 0.08);
 }
 
 /* ─── Footer ─────────────────────────────────────────────── */
 .nusd-footer {
   position: relative;
   backdrop-filter: blur(8px);
-  background: rgba(255, 255, 255, 0.4) !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  font-family: var(--font-display);
 }
 
 /* ─── Responsive ─────────────────────────────────────────── */
@@ -641,18 +644,18 @@ button:disabled {
 /* ─── Wii Message Bubble (Output Panel) ──────────────────── */
 .nusd-wii-bubble {
   background: #f6f7f8 !important;
-  border: 5px solid #b8b7bc !important;
-  border-radius: 24px !important;
+  border: 6px solid #b8b7bc !important;
+  border-radius: 25px !important;
   box-shadow: 4px 6px 20px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   animation: wiiPopIn 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
   font-family: 'Nunito', 'Varela Round', sans-serif;
   padding: 0 !important;
+  transition: border-color 0.2s, box-shadow 0.3s;
 }
-
-@keyframes wiiPopIn {
-  from { transform: scale(0.6); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+.nusd-wii-bubble:hover {
+  border-color: #7dcde8 !important;
+  box-shadow: 4px 6px 20px rgba(0, 0, 0, 0.1), 0 0 30px 10px rgba(173, 216, 230, 0.15);
 }
 
 .nusd-wii-header {
@@ -730,12 +733,12 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2.5px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* ─── Typography ─────────────────────────────────────────── */
 h1, h2, h3 {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 800;
 }
