@@ -178,17 +178,28 @@ export default function App() {
     } catch { /* keep existing database on error */ }
   }, [platform]);
 
-  // Lock page scroll when modal is open
+  // Lock page scroll when modal is open (position:fixed preserves scrollbar)
+  const scrollY = useRef(0);
   useEffect(() => {
-    const html = document.documentElement;
     if (showDatabase) {
-      html.style.overflow = 'hidden';
-      // scrollbar-gutter: stable on html keeps the gutter reserved,
-      // so no padding compensation needed
+      scrollY.current = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY.current}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
     } else {
-      html.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      window.scrollTo(0, scrollY.current);
     }
-    return () => { html.style.overflow = ''; };
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+    };
   }, [showDatabase]);
 
   // Check for danger warnings when title/version/database changes
