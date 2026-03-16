@@ -949,14 +949,22 @@ export default function App() {
               {/* Options */}
               <div style={styles.fieldGroup}>
                 <label style={styles.label}>Options</label>
-                <div style={styles.checkboxGroup}>
-                  <Checkbox checked={packWad} onChange={setPackWad} label="Pack WAD" disabled={isDownloading} />
-                  <Checkbox checked={keepEncrypted} onChange={setKeepEncrypted} label="Keep encrypted contents (ZIP)" disabled={isDownloading} />
-                  <Checkbox checked={decryptContents} onChange={setDecryptContents} label="Create decrypted contents (.app)" disabled={isDownloading} />
-                  {platform === 'wii' && (
-                    <Checkbox checked={useWiiUCDN} onChange={setUseWiiUCDN} label="Use Wii U CDN" disabled={isDownloading} />
-                  )}
-                </div>
+                {(() => {
+                  const noTicket = selectedTitle?.hasTicket === false;
+                  return (
+                    <div style={styles.checkboxGroup}>
+                      <Checkbox checked={noTicket ? false : packWad} onChange={setPackWad} label="Pack WAD" disabled={isDownloading || noTicket} />
+                      <Checkbox checked={noTicket ? true : keepEncrypted} onChange={setKeepEncrypted} label="Keep encrypted contents (ZIP)" disabled={isDownloading || noTicket} />
+                      <Checkbox checked={noTicket ? false : decryptContents} onChange={setDecryptContents} label="Create decrypted contents (.app)" disabled={isDownloading || noTicket} />
+                      {platform === 'wii' && (
+                        <Checkbox checked={useWiiUCDN} onChange={setUseWiiUCDN} label="Use Wii U CDN" disabled={isDownloading} />
+                      )}
+                      {noTicket && (
+                        <span style={styles.hint}>No ticket available — only encrypted contents can be downloaded</span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* IOS Patching */}
