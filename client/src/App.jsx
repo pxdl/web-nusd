@@ -862,7 +862,7 @@ export default function App() {
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Version</label>
                       <div className="nusd-version-chips" style={styles.versionChips}>
-                        {availableVersions.map(v => (
+                        {[...availableVersions].reverse().map(v => (
                           <button
                             key={v}
                             className={`nusd-version-chip ${String(v) === version ? 'active' : ''}`}
@@ -1343,9 +1343,12 @@ export default function App() {
                               <span style={styles.dbRowRegion}>{title.region}</span>
                               {title.versions.length > 0 && (
                                 <span style={styles.dbRowVersions}>
-                                  {title.versions.map((v, vi) => (
+                                  {[...title.versions].reverse().slice(0, 4).map((v, vi) => (
                                     <span key={vi} style={styles.dbRowVersion}>v{v}</span>
                                   ))}
+                                  {title.versions.length > 4 && (
+                                    <span style={styles.dbRowVersionMore}>+{title.versions.length - 4}</span>
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -1898,6 +1901,11 @@ const styles = {
     background: 'rgba(40, 160, 96, 0.08)',
     borderRadius: 8,
     padding: '0 5px',
+  },
+  dbRowVersionMore: {
+    color: COLORS.textDim,
+    fontSize: 10,
+    fontStyle: 'italic',
   },
   dbRowDesc: {
     fontSize: 11,
