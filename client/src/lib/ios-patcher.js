@@ -116,9 +116,3 @@ export function patchIOS(contentData, patchTypes) {
   return { data, results };
 }
 
-/**
- * Apply all three patches.
- */
-export function patchAll(contentData) {
-  return patchIOS(contentData, ['trucha', 'esIdentify', 'nandPermissions']);
-}

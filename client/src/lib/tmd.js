@@ -107,7 +107,7 @@ export class TMD {
       };
 
       // Content type flags
-      content.isNormal = (content.type & 0x0001) !== 0;
+      content.isNormal = (content.type & 0xC000) === 0 && (content.type & 0x0001) !== 0;
       content.isDLC = (content.type & 0x4000) !== 0;
       content.isShared = (content.type & 0x8000) !== 0;
 

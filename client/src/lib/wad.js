@@ -210,19 +210,6 @@ export function extractCertsFromTMD(tmdData, numContents) {
 }
 
 /**
- * Build a minimal cert chain from TMD and Ticket certificate data.
- */
-export function buildCertChain(tmdCerts, ticketCerts) {
-  if (tmdCerts && ticketCerts) {
-    const combined = new Uint8Array(tmdCerts.length + ticketCerts.length);
-    combined.set(tmdCerts, 0);
-    combined.set(ticketCerts, tmdCerts.length);
-    return combined;
-  }
-  return tmdCerts || ticketCerts || new Uint8Array(0);
-}
-
-/**
  * Pack a TAD file (DSi Title Archive).
  *
  * TAD is identical to WAD except the Meta section comes before Content.

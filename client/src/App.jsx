@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { NUSClient, NUSError } from './lib/nus-client.js';
 import { TMD } from './lib/tmd.js';
 import { Ticket } from './lib/ticket.js';
@@ -73,6 +73,9 @@ export default function App() {
   // WAD tools
   const [wadUnpackResult, setWadUnpackResult] = useState(null);
 
+  // Database version counter — incremented to force re-render after import
+  const [dbVersion, setDbVersion] = useState(0);
+
   const logRef = useRef(null);
 
   const log = useCallback((msg, type = 'info') => {
@@ -95,16 +98,19 @@ export default function App() {
     if (params.get('mode')) setMode(params.get('mode'));
   }, []);
 
-  // Update URL when config changes (shareable links)
+  // Update URL when config changes (shareable links), debounced
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (titleId) params.set('tid', titleId);
-    if (version) params.set('ver', version);
-    if (platform !== 'wii') params.set('console', platform);
-    if (mode !== 'download') params.set('mode', mode);
-    const search = params.toString();
-    const url = search ? `?${search}` : window.location.pathname;
-    window.history.replaceState(null, '', url);
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (titleId) params.set('tid', titleId);
+      if (version) params.set('ver', version);
+      if (platform !== 'wii') params.set('console', platform);
+      if (mode !== 'download') params.set('mode', mode);
+      const search = params.toString();
+      const url = search ? `?${search}` : window.location.pathname;
+      window.history.replaceState(null, '', url);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [titleId, version, platform, mode]);
 
   // Check proxy on mount and when URL changes
@@ -168,7 +174,7 @@ export default function App() {
           log(`Imported ${result.imported} titles from ${file.name} (NUSD XML)`, 'success');
         }
         log(`  Categories: ${result.categories.join(', ')}`);
-        setDbSearch(prev => prev);
+        setDbVersion(v => v + 1);
       } catch (err) {
         log(`Import failed: ${err.message}`, 'error');
       }
@@ -254,12 +260,16 @@ export default function App() {
 
         log(`Downloading content ${content.idHex} [${i + 1}/${tmd.contents.length}]...`);
 
+        let lastPct = -1;
         const contentData = await client.downloadContent(
           tid,
           content.idHex,
           (loaded, total) => {
             const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
-            setProgress(prev => prev ? { ...prev, pct } : null);
+            if (pct !== lastPct) {
+              lastPct = pct;
+              setProgress(prev => prev ? { ...prev, pct } : null);
+            }
           },
           onRetry
         );
@@ -294,14 +304,14 @@ export default function App() {
         if (isIOS && patchNAND) patchTypes.push('nandPermissions');
         if (isIOS && patchVersion) patchTypes.push('versionPatch');
 
+        let iosPatchApplied = false;
         if (patchTypes.length > 0 && commonKeyHex.trim()) {
-          // Need to decrypt, patch, re-encrypt for patched WAD
           log('  Applying IOS patches before packing...', 'info');
           try {
             const commonKey = parseCommonKey(commonKeyHex.trim());
             const titleKey = await decryptTitleKey(ticket.encryptedTitleKey, commonKey, tmd.titleId);
 
-            const patchedBuffers = [];
+            // Decrypt, patch, and replace contentBuffers with patched encrypted content
             for (let i = 0; i < tmd.contents.length; i++) {
               const content = tmd.contents[i];
               let decrypted = await decryptContent(contentBuffers[i], titleKey, content.index);
@@ -315,15 +325,13 @@ export default function App() {
                   log(`    ${r.patch}: pattern not found`, 'warning');
                 }
               }
-              patchedBuffers.push(patched);
-            }
 
-            // Pack patched WAD (with decrypted patched content — tools handle re-encryption)
-            const patchedWad = packWAD(certChain, ticketBytes, tmdBytes, patchedBuffers);
-            const dbTitle = lookupTitle(tid);
-            const patchedFilename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate).replace('.wad', '.patched.wad');
-            downloadBlob(patchedWad, patchedFilename);
-            log(`Patched WAD saved: ${patchedFilename} (${formatSize(patchedWad.length)})`, 'success');
+              // Pad patched content back to encrypted size and use as content
+              const padded = new Uint8Array(contentBuffers[i].length);
+              padded.set(patched);
+              contentBuffers[i] = padded;
+            }
+            iosPatchApplied = true;
           } catch (err) {
             log(`IOS patching failed: ${err.message}. Packing unpatched WAD.`, 'error');
           }
@@ -340,9 +348,16 @@ export default function App() {
             const reencTitleKey = await encryptTitleKey(decTitleKey, wiiKey, tmd.titleId);
             // Patch ticket: write re-encrypted key and set common key index to 0
             finalTicketBytes = new Uint8Array(ticketBytes);
-            const tkOffset = ticket.sigType === 0x00010001 ? 0x140 + 0x7F : 0x140 + 0x7F;
-            finalTicketBytes.set(reencTitleKey, tkOffset);
-            finalTicketBytes[tkOffset + 0x32] = 0; // commonKeyIndex = 0 (Wii)
+            // Compute header offset based on signature type
+            let tkHeaderOffset;
+            switch (ticket.sigType) {
+              case 0x00010000: tkHeaderOffset = 4 + 512 + 60; break; // RSA-4096
+              case 0x00010001: tkHeaderOffset = 4 + 256 + 60; break; // RSA-2048
+              case 0x00010002: tkHeaderOffset = 4 + 60 + 64; break;  // ECDSA
+              default: tkHeaderOffset = 0x140;
+            }
+            finalTicketBytes.set(reencTitleKey, tkHeaderOffset + 0x7F); // encrypted title key
+            finalTicketBytes[tkHeaderOffset + 0xB1] = 0; // commonKeyIndex = 0 (Wii)
             log('  Title key re-encrypted (vWii → Wii)', 'success');
           } catch (err) {
             log(`  Re-encryption failed: ${err.message}`, 'error');
@@ -355,7 +370,7 @@ export default function App() {
         const packFn = isDSi ? packTAD : packWAD;
         const archiveData = packFn(certChain, finalTicketBytes, tmdBytes, contentBuffers);
         const dbTitle = lookupTitle(tid);
-        const ext = isDSi ? '.tad' : '.wad';
+        const ext = isDSi ? '.tad' : (iosPatchApplied ? '.patched.wad' : '.wad');
         const filename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate).replace(/\.wad$/, ext);
         downloadBlob(archiveData, filename);
         log(`${isDSi ? 'TAD' : 'WAD'} packed and saved: ${filename} (${formatSize(archiveData.length)})`, 'success');
@@ -578,9 +593,15 @@ export default function App() {
   };
 
   // ─── Render ─────────────────────────────────
-  const filteredTitles = searchTitles(dbSearch, dbCategory);
+  const filteredTitles = useMemo(
+    () => showDatabase ? searchTitles(dbSearch, dbCategory) : [],
+    [dbSearch, dbCategory, showDatabase, dbVersion]
+  );
   const showIOS = isIOSTitle(titleId);
-  const activeCategories = getActiveCategories();
+  const activeCategories = useMemo(
+    () => showDatabase ? getActiveCategories() : [],
+    [showDatabase, dbVersion]
+  );
 
   return (
     <div style={styles.root}>
@@ -1144,9 +1165,9 @@ function InfoRow({ label, value }) {
 
 // ─── Utilities ────────────────────────────────────────────
 function formatSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  if (bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 2 : 0)} ${units[i]}`;
 }
 
@@ -1157,7 +1178,8 @@ function downloadBlob(data, filename) {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Delay revoke to ensure browser has started the download
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // ─── Styles ───────────────────────────────────────────────
