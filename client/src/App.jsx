@@ -739,10 +739,10 @@ export default function App() {
         <div style={styles.headerInner}>
           <div style={styles.logoArea}>
             <div className="nusd-logo-icon" style={styles.logoIcon}>
-              <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-                <circle cx="15" cy="15" r="14" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/>
-                <path d="M15 7v12M10 15l5 5.5L20 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <line x1="9" y1="24" x2="21" y2="24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+              <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
+                <path d="M14 2v20" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round"/>
+                <path d="M4 16l10 11 10-11" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="4" y1="30" x2="24" y2="30" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
               </svg>
             </div>
             <div>
