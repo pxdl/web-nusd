@@ -274,13 +274,6 @@ export default function App() {
       return;
     }
 
-    // Warn if database says no ticket and user expects ticket-dependent output
-    if (selectedTitle?.hasTicket === false && !keepEncrypted && (packWad || decryptContents)) {
-      log('Warning: This title has no ticket available. Only "Keep encrypted contents" will produce output.', 'warning');
-      log('Enable "Keep encrypted contents (ZIP)" or the download will produce no files.', 'warning');
-      return;
-    }
-
     setIsDownloading(true);
     setLogs([]);
     setTmdInfo(null);
@@ -540,18 +533,23 @@ export default function App() {
 
       setProgress(null);
 
-      // Check if anything was actually saved
-      const producedOutput = (packWad && ticket) || keepEncrypted || (decryptContents && ticket && commonKeyHex.trim());
-      if (!producedOutput) {
-        if (!ticket) {
-          log('No output produced — ticket was not available for this title.', 'warning');
-          log('Try enabling "Keep encrypted contents (ZIP)" to save raw files.', 'warning');
-        } else {
-          log('No output produced — check your output options.', 'warning');
+      // If no ticket was available and encrypted contents weren't explicitly requested,
+      // save them anyway so the user gets something (matching NUSGet/NUSD behavior)
+      if (!ticket && !keepEncrypted) {
+        log('No ticket available — saving encrypted contents as fallback.', 'warning');
+        const zipFiles = [];
+        zipFiles.push({ name: 'tmd', data: new Uint8Array(tmdData) });
+        for (let i = 0; i < tmd.contents.length; i++) {
+          zipFiles.push({ name: tmd.contents[i].idHex, data: contentBuffers[i] });
         }
-      } else {
-        log('Download complete!', 'success');
+        const folder = `${tid.toUpperCase()}_v${tmd.titleVersion}/`;
+        const zipData = createZip(zipFiles, folder);
+        downloadBlob(zipData, `${tid.toUpperCase()}-v${tmd.titleVersion}-encrypted.zip`);
+        log('Encrypted contents saved as ZIP.', 'success');
+        log('WAD packing and decryption require a ticket.', 'warning');
       }
+
+      log('Download complete!', 'success');
 
     } catch (err) {
       log(`Error: ${err.message}`, 'error');
