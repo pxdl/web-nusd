@@ -49,6 +49,7 @@ body {
   font-family: var(--font-mono);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  scrollbar-gutter: stable;
 }
 
 /* Wii-style soft animated background shimmer */
