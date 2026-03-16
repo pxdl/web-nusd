@@ -87,6 +87,9 @@ export default function App() {
   // Database version counter — incremented to force re-render after import
   const [dbVersion, setDbVersion] = useState(0);
 
+  // Database tree: track which categories are expanded
+  const [expandedCats, setExpandedCats] = useState({});
+
   const logRef = useRef(null);
 
   const log = useCallback((msg, type = 'info') => {
@@ -610,6 +613,10 @@ export default function App() {
     log('All components exported as ZIP.', 'success');
   };
 
+  const toggleCategory = useCallback((cat) => {
+    setExpandedCats(prev => ({ ...prev, [cat]: !prev[cat] }));
+  }, []);
+
   // ─── Render ─────────────────────────────────
   const filteredTitles = useMemo(
     () => showDatabase ? searchTitles(dbSearch, dbCategory) : [],
@@ -620,6 +627,28 @@ export default function App() {
     () => showDatabase ? getActiveCategories() : [],
     [showDatabase, dbVersion]
   );
+
+  // Group filtered titles by category for tree view
+  const groupedTitles = useMemo(() => {
+    const groups = {};
+    for (const title of filteredTitles) {
+      const cat = title.category || 'Other';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(title);
+    }
+    return groups;
+  }, [filteredTitles]);
+
+  // When searching, auto-expand all categories; otherwise use manual state
+  const isSearching = dbSearch.trim().length > 0;
+  const isCatExpanded = useCallback((cat) => {
+    if (isSearching) return true;
+    // Default: expand first category, collapse rest
+    if (expandedCats[cat] === undefined) {
+      return Object.keys(groupedTitles).indexOf(cat) === 0;
+    }
+    return expandedCats[cat];
+  }, [isSearching, expandedCats, groupedTitles]);
 
   return (
     <div style={styles.root}>
@@ -1084,54 +1113,66 @@ export default function App() {
 
             <div style={styles.modalFilters}>
               <input
-                style={styles.input}
+                style={{ ...styles.input, fontSize: 14 }}
                 type="text"
                 placeholder="Search titles..."
                 value={dbSearch}
                 onChange={e => setDbSearch(e.target.value)}
                 autoFocus
               />
-              <select
-                style={styles.select}
-                value={dbCategory}
-                onChange={e => setDbCategory(e.target.value)}
-              >
-                <option value="">All Categories</option>
-                {activeCategories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
             </div>
 
             <div style={styles.modalList}>
-              {filteredTitles.map((title, i) => (
-                <div
-                  key={i}
-                  className="nusd-db-row"
-                  style={{
-                    ...styles.dbRow,
-                    ...(title.danger ? { borderLeft: `3px solid ${COLORS.danger}` } : {}),
-                  }}
-                  onClick={() => selectTitle(title)}
-                >
-                  <div style={styles.dbRowName}>
-                    {title.name}
-                    {title.danger && <span className="nusd-tag-danger" style={styles.dangerTag}>CAUTION</span>}
-                    {title.hasTicket === false && <span style={styles.noTicketTag}>No Ticket</span>}
-                  </div>
-                  <div style={styles.dbRowMeta}>
-                    <span style={styles.dbRowTid}>{title.titleId}</span>
-                    <span style={styles.dbRowRegion}>{title.region}</span>
-                    {title.versions.length > 0 && (
-                      <span style={styles.dbRowVersion}>v{title.versions[title.versions.length - 1]}</span>
-                    )}
-                  </div>
-                  <div style={styles.dbRowDesc}>{title.description}</div>
-                </div>
-              ))}
-              {filteredTitles.length === 0 && (
+              {Object.keys(groupedTitles).length === 0 && (
                 <div style={styles.logEmpty}>No titles match your search.</div>
               )}
+              {Object.entries(groupedTitles).map(([category, titles]) => {
+                const expanded = isCatExpanded(category);
+                return (
+                  <div key={category} className="nusd-tree-group">
+                    <div
+                      className="nusd-tree-category"
+                      style={styles.treeCategory}
+                      onClick={() => toggleCategory(category)}
+                    >
+                      <span className={`nusd-tree-arrow ${expanded ? 'expanded' : ''}`} style={styles.treeArrow}>
+                        &#x25B6;
+                      </span>
+                      <span style={styles.treeCatName}>{category}</span>
+                      <span style={styles.treeCatCount}>{titles.length}</span>
+                    </div>
+                    {expanded && (
+                      <div className="nusd-tree-items">
+                        {titles.map((title, i) => (
+                          <div
+                            key={i}
+                            className="nusd-db-row"
+                            style={{
+                              ...styles.dbRow,
+                              paddingLeft: 32,
+                              ...(title.danger ? { borderLeft: `3px solid ${COLORS.danger}` } : {}),
+                            }}
+                            onClick={() => selectTitle(title)}
+                          >
+                            <div style={styles.dbRowName}>
+                              {title.name}
+                              {title.danger && <span className="nusd-tag-danger" style={styles.dangerTag}>CAUTION</span>}
+                              {title.hasTicket === false && <span style={styles.noTicketTag}>No Ticket</span>}
+                            </div>
+                            <div style={styles.dbRowMeta}>
+                              <span style={styles.dbRowTid}>{title.titleId}</span>
+                              <span style={styles.dbRowRegion}>{title.region}</span>
+                              {title.versions.length > 0 && (
+                                <span style={styles.dbRowVersion}>v{title.versions[title.versions.length - 1]}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div style={styles.modalFooter}>
@@ -1689,6 +1730,47 @@ const styles = {
     padding: '1px 5px',
     borderRadius: 3,
     textTransform: 'uppercase',
+  },
+  // Tree view
+  treeCategory: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 18px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    borderBottom: `1px solid ${COLORS.border}`,
+    fontFamily: '"Rajdhani", sans-serif',
+    fontWeight: 600,
+    fontSize: 14,
+    color: COLORS.text,
+    background: COLORS.surfaceLight,
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
+  },
+  treeArrow: {
+    fontSize: 9,
+    color: COLORS.textDim,
+    display: 'inline-block',
+    transition: 'transform 0.2s',
+    flexShrink: 0,
+    width: 12,
+  },
+  treeCatName: {
+    flex: 1,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    color: COLORS.accentDim,
+  },
+  treeCatCount: {
+    fontSize: 11,
+    fontFamily: '"Fira Code", monospace',
+    color: COLORS.textDim,
+    background: COLORS.border,
+    borderRadius: 10,
+    padding: '1px 8px',
+    fontWeight: 500,
   },
   // Batch list
   batchList: {
