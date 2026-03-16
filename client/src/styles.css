@@ -1,50 +1,73 @@
 /* ═══════════════════════════════════════════════════════════
-   Web NUS Downloader — Styles
-   Aesthetic: Retro System Utility
+   Web NUS Downloader — Wii-Inspired Theme
+   Aesthetic: Skeuomorphic Wii System Menu
    ═══════════════════════════════════════════════════════════ */
 
 /* ─── CSS Variables ──────────────────────────────────────── */
 :root {
-  --bg: #080c14;
-  --surface: #0f1520;
-  --surface-light: #161e2e;
-  --surface-hover: #1a2540;
-  --accent: #00d4ff;
-  --accent-dim: #006b80;
-  --accent-glow: rgba(0, 212, 255, 0.12);
-  --accent-glow-strong: rgba(0, 212, 255, 0.25);
-  --warning: #ffb020;
-  --error: #ff4060;
-  --success: #00e878;
-  --text: #e2e8f0;
-  --text-dim: #5a6a80;
-  --border: #1a2438;
-  --danger: #ff2040;
-  --radius: 6px;
+  --bg-top: #b8dce8;
+  --bg-bottom: #dceef6;
+  --surface: #ffffff;
+  --surface-hover: #f0f7fb;
+  --surface-pressed: #e4eef5;
+  --accent: #009ec2;
+  --accent-light: #33b8d8;
+  --accent-dark: #007a9a;
+  --accent-glow: rgba(0, 158, 194, 0.15);
+  --accent-glow-strong: rgba(0, 158, 194, 0.3);
+  --warning: #e8a317;
+  --error: #d94040;
+  --success: #28a060;
+  --text: #2c3a48;
+  --text-dim: #6a7f90;
+  --text-light: #8da0b0;
+  --border: #c8d8e4;
+  --border-light: #dce8f0;
+  --danger: #d94040;
+  --danger-bg: rgba(217, 64, 64, 0.08);
+  --shadow-sm: 0 1px 3px rgba(0, 40, 80, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 40, 80, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 40, 80, 0.10);
+  --shadow-xl: 0 16px 48px rgba(0, 40, 80, 0.14);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 5px;
   --font-display: 'Rajdhani', 'Segoe UI', sans-serif;
-  --font-mono: 'Fira Code', 'JetBrains Mono', 'SF Mono', monospace;
+  --font-mono: 'Fira Code', 'SF Mono', 'Consolas', monospace;
+  --font-body: 'Rajdhani', -apple-system, 'Segoe UI', sans-serif;
 }
 
 /* ─── Reset & Base ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
+
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background: linear-gradient(170deg, var(--bg-top), var(--bg-bottom));
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-mono);
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* ─── Background Atmosphere: Circuit Dot Grid ────────────── */
+/* Wii-style soft animated background shimmer */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: radial-gradient(rgba(0, 212, 255, 0.04) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(255, 255, 255, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
+  animation: bgShift 20s ease-in-out infinite alternate;
+}
+
+@keyframes bgShift {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
 }
 
 #root {
@@ -54,33 +77,33 @@ body::before {
 
 /* ─── Selection ──────────────────────────────────────────── */
 ::selection {
-  background: rgba(0, 212, 255, 0.3);
-  color: #fff;
+  background: rgba(0, 158, 194, 0.25);
+  color: var(--text);
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--border-light); border-radius: 3px; }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { background: #2a3a50; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
 
 /* ─── Animations ─────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 8px var(--accent-glow); }
-  50% { box-shadow: 0 0 20px var(--accent-glow-strong), 0 0 40px var(--accent-glow); }
+  0%, 100% { box-shadow: 0 0 4px var(--accent-glow); }
+  50% { box-shadow: 0 0 14px var(--accent-glow-strong); }
 }
 
 @keyframes progressShimmer {
@@ -89,23 +112,23 @@ body::before {
 }
 
 @keyframes statusPulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px currentColor; }
-  50% { opacity: 0.6; box-shadow: 0 0 8px currentColor; }
-}
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
 }
 
 @keyframes typeIn {
-  from { opacity: 0; transform: translateX(-4px); }
+  from { opacity: 0; transform: translateX(-3px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes tagPulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  50% { opacity: 0.65; }
+}
+
+@keyframes btnShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* ─── Global Input Styles ────────────────────────────────── */
@@ -114,12 +137,12 @@ input, select {
 }
 input:focus, select:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 2px var(--accent-glow), 0 0 12px var(--accent-glow);
+  box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm);
   outline: none;
 }
 input::placeholder {
-  color: var(--text-dim);
-  opacity: 0.5;
+  color: var(--text-light);
+  opacity: 0.7;
 }
 
 /* ─── Global Button Base ─────────────────────────────────── */
@@ -127,37 +150,27 @@ button {
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
 }
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 /* ─── Header ─────────────────────────────────────────────── */
 .nusd-header {
   position: relative;
-}
-.nusd-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-bottom: 1px solid var(--border-light) !important;
 }
 
 .nusd-logo-icon {
-  animation: pulseGlow 3s ease-in-out infinite;
+  animation: pulseGlow 4s ease-in-out infinite;
   border-radius: 50%;
 }
 
 .nusd-title {
-  background: linear-gradient(135deg, var(--accent), #40e0ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent-dark) !important;
 }
 
 /* ─── Status Dot ─────────────────────────────────────────── */
@@ -165,12 +178,15 @@ button:disabled {
   transition: background-color 0.3s;
 }
 .nusd-status-dot.connected {
-  animation: statusPulse 2s ease-in-out infinite;
+  animation: statusPulse 2.5s ease-in-out infinite;
 }
 
 /* ─── Tab Bar ────────────────────────────────────────────── */
 .nusd-tab {
   position: relative;
+  font-family: var(--font-display) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
 }
 .nusd-tab::after {
   content: '';
@@ -178,73 +194,77 @@ button:disabled {
   bottom: -1px;
   left: 50%;
   width: 0;
-  height: 2px;
+  height: 3px;
   background: var(--accent);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateX(-50%);
-  border-radius: 1px;
-  box-shadow: 0 0 8px var(--accent-glow);
+  border-radius: 3px 3px 0 0;
 }
 .nusd-tab:hover {
-  color: var(--text) !important;
+  color: var(--accent) !important;
 }
 .nusd-tab.active::after {
   width: 100%;
 }
 .nusd-tab.active {
-  color: var(--accent) !important;
+  color: var(--accent-dark) !important;
 }
 
-/* ─── Panels ─────────────────────────────────────────────── */
+/* ─── Panels (Wii Channel Tiles) ─────────────────────────── */
 .nusd-panel {
-  animation: fadeIn 0.3s ease-out;
-  backdrop-filter: blur(4px);
-  background: rgba(15, 21, 32, 0.85) !important;
-  border: 1px solid rgba(26, 36, 56, 0.8) !important;
+  animation: fadeIn 0.35s ease-out;
+  background: var(--surface) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-md);
 }
 
 /* ─── Toggle Buttons (Platform Selector) ─────────────────── */
 .nusd-toggle {
-  position: relative;
-  z-index: 1;
+  font-family: var(--font-display) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
 }
 .nusd-toggle:first-child {
-  border-radius: var(--radius) 0 0 var(--radius);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 .nusd-toggle:last-child {
-  border-radius: 0 var(--radius) 0 var(--radius);
+  border-radius: 0 var(--radius-sm) 0 var(--radius-sm);
 }
 .nusd-toggle:not(:first-child) {
   margin-left: -1px;
 }
 .nusd-toggle:hover:not(:disabled):not(.active) {
   background: var(--surface-hover) !important;
-  color: var(--text) !important;
+  color: var(--accent) !important;
   z-index: 2;
 }
 .nusd-toggle.active {
   z-index: 3;
-  box-shadow: 0 0 12px var(--accent-glow);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 8px var(--accent-glow);
 }
 
-/* ─── Primary Button ─────────────────────────────────────── */
+/* ─── Primary Button (Wii-style rounded teal) ────────────── */
 .nusd-btn-primary {
-  position: relative;
-  overflow: hidden;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.15);
+  font-family: var(--font-display) !important;
+  font-size: 16px !important;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-md), 0 2px 8px var(--accent-glow);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 .nusd-btn-primary:hover:not(:disabled) {
-  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3), 0 0 40px rgba(0, 212, 255, 0.1);
-  transform: translateY(-1px);
-  filter: brightness(1.1);
+  box-shadow: var(--shadow-lg), 0 4px 16px var(--accent-glow-strong);
+  transform: translateY(-2px);
+  filter: brightness(1.08);
 }
 .nusd-btn-primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(0, 212, 255, 0.2);
+  box-shadow: var(--shadow-sm);
   filter: brightness(0.95);
 }
-/* Shimmer effect */
+/* Shimmer sweep */
 .nusd-btn-primary::before {
   content: '';
   position: absolute;
@@ -252,14 +272,15 @@ button:disabled {
   background: linear-gradient(
     105deg,
     transparent 30%,
-    rgba(255, 255, 255, 0.08) 45%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0.08) 55%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
     transparent 70%
   );
   background-size: 250% 100%;
-  animation: progressShimmer 4s linear infinite;
+  animation: btnShimmer 5s linear infinite;
   pointer-events: none;
+  border-radius: inherit;
 }
 .nusd-btn-primary:disabled::before {
   animation: none;
@@ -268,12 +289,13 @@ button:disabled {
 /* ─── Secondary & Small Buttons ──────────────────────────── */
 .nusd-btn-secondary:hover:not(:disabled) {
   background: var(--surface-hover) !important;
-  border-color: var(--accent-dim) !important;
+  border-color: var(--accent) !important;
   color: var(--accent) !important;
+  box-shadow: var(--shadow-sm);
 }
 .nusd-btn-small:hover:not(:disabled) {
-  background: var(--surface-light) !important;
-  border-color: var(--accent-dim) !important;
+  background: var(--surface-hover) !important;
+  border-color: var(--accent) !important;
   color: var(--accent) !important;
 }
 
@@ -282,33 +304,33 @@ button:disabled {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .nusd-checkbox-box.checked {
-  box-shadow: 0 0 8px var(--accent-glow);
-  transform: scale(1.05);
+  box-shadow: 0 1px 4px var(--accent-glow-strong);
+  transform: scale(1.08);
 }
 
 /* ─── Info Card ──────────────────────────────────────────── */
 .nusd-info-card {
   animation: fadeIn 0.3s ease-out;
   position: relative;
+  border-radius: var(--radius-sm) !important;
 }
 .nusd-info-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
-  width: 3px;
+  width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
-  border-radius: 3px 0 0 3px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 
 /* ─── Progress Bar ───────────────────────────────────────── */
 .nusd-progress-fill {
   position: relative;
-  background: linear-gradient(90deg, var(--accent), var(--success)) !important;
-  box-shadow: 0 0 12px var(--accent-glow), 0 0 4px var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  border-radius: 3px !important;
 }
-/* Animated shimmer on progress bar */
 .nusd-progress-fill::after {
   content: '';
   position: absolute;
@@ -316,30 +338,18 @@ button:disabled {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.25) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
-  animation: progressShimmer 1.5s linear infinite;
+  animation: progressShimmer 1.2s linear infinite;
+  border-radius: inherit;
 }
 
-/* ─── Log Box with CRT Scanline Effect ───────────────────── */
+/* ─── Log Box ────────────────────────────────────────────── */
 .nusd-log {
   position: relative;
-}
-.nusd-log::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
-  pointer-events: none;
-  border-radius: inherit;
+  border-radius: var(--radius-sm) !important;
 }
 
 /* Log line entrance */
@@ -351,6 +361,7 @@ button:disabled {
 .nusd-danger-banner {
   position: relative;
   animation: fadeIn 0.3s ease-out;
+  border-radius: var(--radius-sm) !important;
 }
 .nusd-danger-banner::before {
   content: '';
@@ -358,29 +369,33 @@ button:disabled {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
+  width: 4px;
   background: var(--danger);
-  border-radius: 3px 0 0 3px;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 
 /* ─── Tags ───────────────────────────────────────────────── */
 .nusd-tag-danger {
-  animation: tagPulse 2s ease-in-out infinite;
+  animation: tagPulse 2.5s ease-in-out infinite;
 }
 
 /* ─── Modal ──────────────────────────────────────────────── */
 .nusd-modal-overlay {
   animation: fadeIn 0.15s ease-out;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  background: rgba(44, 58, 72, 0.35) !important;
 }
 .nusd-modal {
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 40px var(--accent-glow);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-xl);
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--surface) !important;
 }
 
 /* ─── Database Rows ──────────────────────────────────────── */
 .nusd-db-row {
-  transition: background 0.15s, padding-left 0.15s;
+  transition: background 0.15s, padding-left 0.2s;
 }
 .nusd-db-row:hover {
   background: var(--surface-hover) !important;
@@ -390,30 +405,24 @@ button:disabled {
 /* ─── Error Banner ───────────────────────────────────────── */
 .nusd-error-banner {
   animation: fadeIn 0.3s ease-out;
+  border-radius: var(--radius-sm) !important;
 }
 
 /* ─── Batch List Items ───────────────────────────────────── */
 .nusd-batch-item {
   transition: background 0.1s;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   padding: 3px 6px !important;
 }
 .nusd-batch-item:hover {
-  background: var(--surface-light);
+  background: var(--surface-hover);
 }
 
 /* ─── Footer ─────────────────────────────────────────────── */
 .nusd-footer {
   position: relative;
-}
-.nusd-footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.4) !important;
 }
 
 /* ─── Responsive ─────────────────────────────────────────── */
@@ -431,9 +440,8 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* ─── Subtle text rendering ──────────────────────────────── */
+/* ─── Typography ─────────────────────────────────────────── */
 h1, h2, h3 {
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: 0.02em;
 }
