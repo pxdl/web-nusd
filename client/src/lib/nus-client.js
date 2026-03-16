@@ -16,8 +16,8 @@ const RETRY_DELAY_MS = 1000;
 export class NUSClient {
   constructor(proxyBase = DEFAULT_PROXY) {
     this.proxyBase = proxyBase.replace(/\/$/, '');
-    this.useWiiU = false;
-    this.platform = 'wii'; // 'wii' or 'dsi'
+    this.useWiiU = true; // Wii U CDN is faster and more reliable
+    this.platform = 'wii'; // 'wii', 'vwii', or 'dsi'
     this.maxRetries = DEFAULT_RETRIES;
   }
 
@@ -25,7 +25,7 @@ export class NUSClient {
   _queryParams() {
     const params = [];
     if (this.platform === 'dsi') params.push('dsi=1');
-    else if (this.useWiiU) params.push('wiiu=1');
+    else if (this.platform === 'vwii' || this.useWiiU) params.push('wiiu=1');
     return params.length ? '?' + params.join('&') : '';
   }
 

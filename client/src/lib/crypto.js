@@ -160,6 +160,33 @@ export function parseCommonKey(input) {
   throw new Error('Common key must be 32 hex chars or 16 raw bytes');
 }
 
+/**
+ * Encrypt a title key (for vWii re-encryption).
+ *
+ * vWii titles have their title key encrypted with the vWii common key (index 2).
+ * To make WADs installable on real Wii hardware, we re-encrypt the title key
+ * with the standard Wii common key (index 0).
+ *
+ * @param {Uint8Array} titleKey     - Decrypted 16-byte title key
+ * @param {Uint8Array} commonKey    - 16-byte common key to encrypt with
+ * @param {string} titleId         - 16-char hex title ID
+ * @returns {Promise<Uint8Array>} Encrypted title key (16 bytes)
+ */
+export async function encryptTitleKey(titleKey, commonKey, titleId) {
+  const iv = new Uint8Array(16);
+  for (let i = 0; i < 8; i++) {
+    iv[i] = parseInt(titleId.substr(i * 2, 2), 16);
+  }
+  const key = await crypto.subtle.importKey(
+    'raw', commonKey, { name: 'AES-CBC' }, false, ['encrypt']
+  );
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv }, key, titleKey
+  );
+  // encrypt() adds PKCS7 padding → 32 bytes output; take first 16
+  return new Uint8Array(encrypted).slice(0, 16);
+}
+
 /** Common key type names for display */
 export const COMMON_KEY_NAMES = {
   0: 'Wii Common Key',

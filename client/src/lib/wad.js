@@ -222,6 +222,76 @@ export function buildCertChain(tmdCerts, ticketCerts) {
   return tmdCerts || ticketCerts || new Uint8Array(0);
 }
 
+/**
+ * Pack a TAD file (DSi Title Archive).
+ *
+ * TAD is identical to WAD except the Meta section comes before Content.
+ * When meta is empty (the common case), the output is byte-identical to WAD.
+ *
+ * @param {Uint8Array} certChain  - Certificate chain
+ * @param {Uint8Array} ticket     - Ticket data
+ * @param {Uint8Array} tmd        - TMD data
+ * @param {Uint8Array[]} contents - Encrypted content blobs
+ * @param {Uint8Array} [meta]     - Optional meta/footer data
+ * @returns {Uint8Array} Complete TAD file
+ */
+export function packTAD(certChain, ticket, tmd, contents, meta) {
+  const metaData = meta || new Uint8Array(0);
+
+  let dataSize = 0;
+  for (const content of contents) {
+    dataSize += align(content.length);
+  }
+
+  const header = new ArrayBuffer(0x20);
+  const hv = new DataView(header);
+  hv.setUint32(0x00, 0x00000020);
+  hv.setUint16(0x04, 0x4973);          // "Is"
+  hv.setUint16(0x06, 0x0000);
+  hv.setUint32(0x08, certChain.length);
+  hv.setUint32(0x0C, 0x00000000);      // CRL size (unused)
+  hv.setUint32(0x10, ticket.length);
+  hv.setUint32(0x14, tmd.length);
+  hv.setUint32(0x18, dataSize);
+  hv.setUint32(0x1C, metaData.length);
+
+  const totalSize =
+    align(0x20) +
+    align(certChain.length) +
+    align(ticket.length) +
+    align(tmd.length) +
+    (metaData.length > 0 ? align(metaData.length) : 0) +
+    dataSize;
+
+  const tad = new Uint8Array(totalSize);
+  let offset = 0;
+
+  tad.set(new Uint8Array(header), offset);
+  offset += align(0x20);
+
+  tad.set(certChain, offset);
+  offset += align(certChain.length);
+
+  tad.set(ticket, offset);
+  offset += align(ticket.length);
+
+  tad.set(tmd, offset);
+  offset += align(tmd.length);
+
+  // TAD: Meta comes BEFORE Content (opposite of WAD)
+  if (metaData.length > 0) {
+    tad.set(metaData, offset);
+    offset += align(metaData.length);
+  }
+
+  for (const content of contents) {
+    tad.set(content, offset);
+    offset += align(content.length);
+  }
+
+  return tad;
+}
+
 // Official WAD naming patterns from the original NUSD
 const OFFICIAL_NAMES = {
   '0000000100000002': 'RVL-WiiSystemmenu-[v]',

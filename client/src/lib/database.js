@@ -280,6 +280,122 @@ export function importDatabaseXML(xmlText) {
 }
 
 /**
+ * Import titles from NUSGet's JSON database format.
+ *
+ * NUSGet uses JSON files with this structure:
+ *   {
+ *     "Category Name": [
+ *       {
+ *         "Name": "Title Name",
+ *         "TID": "00000001000000XX",  // XX = region placeholder
+ *         "Versions": { "World": [ver1, ver2], "USA/NTSC": [...] },
+ *         "Ticket": true,
+ *         "Danger": "Optional warning"
+ *       }
+ *     ]
+ *   }
+ *
+ * TIDs ending in "XX" are region-varying; the last byte is replaced
+ * per-region (45=USA, 50=EUR, 4A=JPN, 4B=KOR).
+ *
+ * @param {string} jsonText - Raw JSON content
+ * @param {string} [platform='wii'] - Platform: 'wii', 'vwii', or 'dsi'
+ * @returns {{ imported: number, categories: string[] }}
+ */
+export function importNUSGetJSON(jsonText, platform = 'wii') {
+  const data = JSON.parse(jsonText);
+
+  const regionNameMap = {
+    'World': REGIONS.ALL,
+    'USA/NTSC': REGIONS.USA,
+    'Europe/PAL': REGIONS.EUR,
+    'Japan': REGIONS.JPN,
+    'Korea': REGIONS.KOR,
+    'China': REGIONS.ALL,
+    'Australia/NZ': REGIONS.EUR,
+  };
+
+  // Region byte to replace XX suffix in TIDs
+  const regionByte = {
+    'USA/NTSC': '45',
+    'Europe/PAL': '50',
+    'Japan': '4a',
+    'Korea': '4b',
+    'China': '43',
+    'Australia/NZ': '55',
+  };
+
+  const imported = [];
+  const categoriesFound = new Set();
+
+  for (const [category, titles] of Object.entries(data)) {
+    if (!Array.isArray(titles)) continue;
+
+    // Map NUSGet category names to shorter display names
+    let displayCategory = category;
+    if (category.startsWith('Virtual Console - ')) {
+      displayCategory = 'VC - ' + category.replace('Virtual Console - ', '');
+    } else if (category === 'WiiWare - Demos') {
+      displayCategory = 'WiiWare Demos';
+    }
+
+    if (platform === 'dsi') {
+      if (category === 'System Apps') displayCategory = CATEGORIES.DSI_SYSTEM;
+      else if (category === 'DSiWare') displayCategory = CATEGORIES.DSIWARE;
+      else if (category === 'System') displayCategory = CATEGORIES.DSI_SYSTEM;
+    }
+
+    categoriesFound.add(displayCategory);
+
+    for (const title of titles) {
+      const baseTid = (title.TID || '').toLowerCase();
+      if (!baseTid || baseTid.length !== 16) continue;
+
+      const hasXX = baseTid.endsWith('xx');
+
+      for (const [regionName, versions] of Object.entries(title.Versions || {})) {
+        if (!Array.isArray(versions) || versions.length === 0) continue;
+
+        let tid = baseTid;
+        if (hasXX && regionByte[regionName]) {
+          tid = baseTid.slice(0, 14) + regionByte[regionName];
+        } else if (hasXX && regionName === 'World') {
+          // For "World" entries with XX, keep as generic (use 00)
+          tid = baseTid.slice(0, 14) + '00';
+        }
+
+        const region = regionNameMap[regionName] || REGIONS.ALL;
+        const name = (regionName === 'World' || Object.keys(title.Versions).length === 1)
+          ? title.Name
+          : `${title.Name} (${regionName})`;
+
+        imported.push({
+          name,
+          titleId: tid,
+          versions,
+          category: displayCategory,
+          region,
+          description: title.Danger || displayCategory,
+          hasTicket: title.Ticket !== false,
+          danger: title.Danger || null,
+        });
+      }
+    }
+  }
+
+  if (imported.length === 0) {
+    throw new Error('No valid titles found. Ensure the file uses NUSGet\'s JSON database format.');
+  }
+
+  TITLE_DATABASE = imported;
+
+  return {
+    imported: imported.length,
+    categories: [...categoriesFound],
+  };
+}
+
+/**
  * Merge imported titles into the existing database (additive).
  *
  * @param {Array} newTitles - Titles to add

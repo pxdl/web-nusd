@@ -2,9 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { NUSClient, NUSError } from './lib/nus-client.js';
 import { TMD } from './lib/tmd.js';
 import { Ticket } from './lib/ticket.js';
-import { packWAD, unpackWAD, extractCertsFromTMD, generateWadFilename } from './lib/wad.js';
-import { decryptTitleKey, decryptContent, verifyContent, parseCommonKey, COMMON_KEY_NAMES } from './lib/crypto.js';
-import { TITLE_DATABASE, CATEGORIES, REGIONS, searchTitles, getTitleType, lookupTitle, importDatabaseXML, getActiveCategories } from './lib/database.js';
+import { packWAD, packTAD, unpackWAD, extractCertsFromTMD, generateWadFilename } from './lib/wad.js';
+import { decryptTitleKey, decryptContent, encryptTitleKey, verifyContent, parseCommonKey, COMMON_KEY_NAMES } from './lib/crypto.js';
+import { TITLE_DATABASE, CATEGORIES, REGIONS, searchTitles, getTitleType, lookupTitle, importDatabaseXML, importNUSGetJSON, getActiveCategories } from './lib/database.js';
 import { isIOSTitle, getIOSNumber, patchIOS, PATCHES } from './lib/ios-patcher.js';
 import { parseNUSScript } from './lib/script-parser.js';
 import { createZip } from './lib/zip.js';
@@ -35,7 +35,7 @@ export default function App() {
   // Download config
   const [titleId, setTitleId] = useState('');
   const [version, setVersion] = useState('');
-  const [platform, setPlatform] = useState('wii'); // 'wii' or 'dsi'
+  const [platform, setPlatform] = useState('wii'); // 'wii', 'vwii', or 'dsi'
   const [packWad, setPackWad] = useState(true);
   const [keepEncrypted, setKeepEncrypted] = useState(false);
   const [decryptContents, setDecryptContents] = useState(false);
@@ -48,6 +48,11 @@ export default function App() {
   const [patchTrucha, setPatchTrucha] = useState(false);
   const [patchESIdentify, setPatchESIdentify] = useState(false);
   const [patchNAND, setPatchNAND] = useState(false);
+  const [patchVersion, setPatchVersion] = useState(false);
+
+  // vWii re-encryption
+  const [vwiiReencrypt, setVwiiReencrypt] = useState(false);
+  const [wiiCommonKeyHex, setWiiCommonKeyHex] = useState('');
 
   // State
   const [logs, setLogs] = useState([]);
@@ -80,6 +85,27 @@ export default function App() {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [logs]);
+
+  // Parse shareable URL params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tid')) setTitleId(params.get('tid'));
+    if (params.get('ver')) setVersion(params.get('ver'));
+    if (params.get('console')) setPlatform(params.get('console'));
+    if (params.get('mode')) setMode(params.get('mode'));
+  }, []);
+
+  // Update URL when config changes (shareable links)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (titleId) params.set('tid', titleId);
+    if (version) params.set('ver', version);
+    if (platform !== 'wii') params.set('console', platform);
+    if (mode !== 'download') params.set('mode', mode);
+    const search = params.toString();
+    const url = search ? `?${search}` : window.location.pathname;
+    window.history.replaceState(null, '', url);
+  }, [titleId, version, platform, mode]);
 
   // Check proxy on mount and when URL changes
   useEffect(() => {
@@ -123,20 +149,25 @@ export default function App() {
     }
   };
 
-  // ─── Database XML Import ────────────────────
+  // ─── Database Import ─────────────────────────
   const handleImportDB = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.xml';
+    input.accept = '.xml,.json';
     input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       try {
         const text = await file.text();
-        const result = importDatabaseXML(text);
-        log(`Imported ${result.imported} titles from ${file.name}`, 'success');
+        let result;
+        if (file.name.endsWith('.json')) {
+          result = importNUSGetJSON(text, platform);
+          log(`Imported ${result.imported} titles from ${file.name} (NUSGet JSON)`, 'success');
+        } else {
+          result = importDatabaseXML(text);
+          log(`Imported ${result.imported} titles from ${file.name} (NUSD XML)`, 'success');
+        }
         log(`  Categories: ${result.categories.join(', ')}`);
-        // Force re-render of database
         setDbSearch(prev => prev);
       } catch (err) {
         log(`Import failed: ${err.message}`, 'error');
@@ -261,6 +292,7 @@ export default function App() {
         if (isIOS && patchTrucha) patchTypes.push('trucha');
         if (isIOS && patchESIdentify) patchTypes.push('esIdentify');
         if (isIOS && patchNAND) patchTypes.push('nandPermissions');
+        if (isIOS && patchVersion) patchTypes.push('versionPatch');
 
         if (patchTypes.length > 0 && commonKeyHex.trim()) {
           // Need to decrypt, patch, re-encrypt for patched WAD
@@ -297,12 +329,36 @@ export default function App() {
           }
         }
 
-        // Always pack the normal WAD too
-        const wadData = packWAD(certChain, ticketBytes, tmdBytes, contentBuffers);
+        // vWii re-encryption: re-encrypt title key from vWii key to Wii key
+        let finalTicketBytes = ticketBytes;
+        if (platform === 'vwii' && vwiiReencrypt && commonKeyHex.trim() && wiiCommonKeyHex.trim()) {
+          try {
+            log('  Re-encrypting title key for Wii compatibility...');
+            const vwiiKey = parseCommonKey(commonKeyHex.trim());
+            const wiiKey = parseCommonKey(wiiCommonKeyHex.trim());
+            const decTitleKey = await decryptTitleKey(ticket.encryptedTitleKey, vwiiKey, tmd.titleId);
+            const reencTitleKey = await encryptTitleKey(decTitleKey, wiiKey, tmd.titleId);
+            // Patch ticket: write re-encrypted key and set common key index to 0
+            finalTicketBytes = new Uint8Array(ticketBytes);
+            const tkOffset = ticket.sigType === 0x00010001 ? 0x140 + 0x7F : 0x140 + 0x7F;
+            finalTicketBytes.set(reencTitleKey, tkOffset);
+            finalTicketBytes[tkOffset + 0x32] = 0; // commonKeyIndex = 0 (Wii)
+            log('  Title key re-encrypted (vWii → Wii)', 'success');
+          } catch (err) {
+            log(`  Re-encryption failed: ${err.message}`, 'error');
+            finalTicketBytes = ticketBytes;
+          }
+        }
+
+        // Pack WAD (Wii/vWii) or TAD (DSi)
+        const isDSi = platform === 'dsi';
+        const packFn = isDSi ? packTAD : packWAD;
+        const archiveData = packFn(certChain, finalTicketBytes, tmdBytes, contentBuffers);
         const dbTitle = lookupTitle(tid);
-        const filename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate);
-        downloadBlob(wadData, filename);
-        log(`WAD packed and saved: ${filename} (${formatSize(wadData.length)})`, 'success');
+        const ext = isDSi ? '.tad' : '.wad';
+        const filename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate).replace(/\.wad$/, ext);
+        downloadBlob(archiveData, filename);
+        log(`${isDSi ? 'TAD' : 'WAD'} packed and saved: ${filename} (${formatSize(archiveData.length)})`, 'success');
       }
 
       // ── Step 5: Save encrypted files as ZIP ──
@@ -591,6 +647,11 @@ export default function App() {
                     disabled={isDownloading}
                   >Wii</button>
                   <button
+                    style={{ ...styles.toggleBtn, ...(platform === 'vwii' ? styles.toggleActive : {}) }}
+                    onClick={() => setPlatform('vwii')}
+                    disabled={isDownloading}
+                  >vWii</button>
+                  <button
                     style={{ ...styles.toggleBtn, ...(platform === 'dsi' ? styles.toggleActive : {}) }}
                     onClick={() => setPlatform('dsi')}
                     disabled={isDownloading}
@@ -665,6 +726,7 @@ export default function App() {
                     <Checkbox checked={patchTrucha} onChange={setPatchTrucha} label={PATCHES.trucha.name} disabled={isDownloading} />
                     <Checkbox checked={patchESIdentify} onChange={setPatchESIdentify} label={PATCHES.esIdentify.name} disabled={isDownloading} />
                     <Checkbox checked={patchNAND} onChange={setPatchNAND} label={PATCHES.nandPermissions.name} disabled={isDownloading} />
+                    <Checkbox checked={patchVersion} onChange={setPatchVersion} label={PATCHES.versionPatch.name} disabled={isDownloading} />
                   </div>
                   <span style={styles.hint}>Requires common key for patching</span>
                 </div>
@@ -686,8 +748,32 @@ export default function App() {
                 </div>
               )}
 
+              {/* vWii Re-encryption */}
+              {platform === 'vwii' && (
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>vWii Settings</label>
+                  <div style={styles.checkboxGroup}>
+                    <Checkbox checked={vwiiReencrypt} onChange={setVwiiReencrypt}
+                      label="Re-encrypt title key for Wii compatibility" disabled={isDownloading} />
+                  </div>
+                  {vwiiReencrypt && (
+                    <>
+                      <span style={styles.hint}>Requires both vWii and Wii common keys</span>
+                      <input
+                        style={styles.input}
+                        type="password"
+                        placeholder="Wii Common Key (32 hex chars)"
+                        value={wiiCommonKeyHex}
+                        onChange={e => setWiiCommonKeyHex(e.target.value)}
+                        disabled={isDownloading}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Common Key */}
-              {(decryptContents || patchTrucha || patchESIdentify || patchNAND) && (
+              {(decryptContents || patchTrucha || patchESIdentify || patchNAND || patchVersion || (platform === 'vwii' && vwiiReencrypt)) && (
                 <div style={styles.fieldGroup}>
                   <label style={styles.label}>
                     Common Key
@@ -754,6 +840,8 @@ export default function App() {
                 <div style={styles.toggleGroup}>
                   <button style={{ ...styles.toggleBtn, ...(platform === 'wii' ? styles.toggleActive : {}) }}
                     onClick={() => setPlatform('wii')} disabled={isDownloading}>Wii</button>
+                  <button style={{ ...styles.toggleBtn, ...(platform === 'vwii' ? styles.toggleActive : {}) }}
+                    onClick={() => setPlatform('vwii')} disabled={isDownloading}>vWii</button>
                   <button style={{ ...styles.toggleBtn, ...(platform === 'dsi' ? styles.toggleActive : {}) }}
                     onClick={() => setPlatform('dsi')} disabled={isDownloading}>DSi</button>
                 </div>
@@ -945,7 +1033,7 @@ export default function App() {
               <h2 style={styles.modalTitle}>Title Database</h2>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button style={styles.btnSmall} onClick={handleImportDB}>
-                  Import XML
+                  Import DB
                 </button>
                 <button style={styles.btnClose} onClick={() => setShowDatabase(false)}>&#x2715;</button>
               </div>

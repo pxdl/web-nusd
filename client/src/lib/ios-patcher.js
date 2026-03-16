@@ -34,6 +34,13 @@ export const PATCHES = {
       { search: [0x42, 0x8B, 0xD0, 0x01, 0x25, 0x66], offset: 2, replace: [0xE0] },
     ],
   },
+  versionPatch: {
+    name: 'Version Patch',
+    description: 'Allows downgrading to older versions',
+    patterns: [
+      { search: [0xD2, 0x01, 0x4E, 0x56], offset: 2, replace: [0x46, 0xE0] },
+    ],
+  },
 };
 
 /**
