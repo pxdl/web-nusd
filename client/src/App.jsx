@@ -116,6 +116,7 @@ export default function App() {
     if (params.get('ver')) setVersion(params.get('ver'));
     if (params.get('console')) setPlatform(params.get('console'));
     if (params.get('mode')) setMode(params.get('mode'));
+    if (params.get('manual') === '1') setManualEntry(true);
   }, []);
 
   // After database loads, try to match the current title ID to a database entry.
@@ -142,6 +143,7 @@ export default function App() {
       if (version) params.set('ver', version);
       if (platform !== 'wii') params.set('console', platform);
       if (mode !== 'download') params.set('mode', mode);
+      if (manualEntry) params.set('manual', '1');
       const search = params.toString();
       const url = search ? `?${search}` : window.location.pathname;
       window.history.replaceState(null, '', url);
