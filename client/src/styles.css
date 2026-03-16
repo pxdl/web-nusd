@@ -40,6 +40,11 @@
 /* ─── Reset & Base ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   padding: 0;
