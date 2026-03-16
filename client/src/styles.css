@@ -238,14 +238,14 @@ button:disabled {
 @keyframes cardDeal {
   0% {
     opacity: 0;
-    transform: translateX(40px) rotate(2deg) scale(0.96);
+    transform: translateX(40px);
   }
   40% {
     opacity: 1;
   }
   100% {
     opacity: 1;
-    transform: translateX(0) rotate(0) scale(1);
+    transform: translateX(0);
   }
 }
 
