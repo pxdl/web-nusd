@@ -1342,7 +1342,11 @@ export default function App() {
                               <span style={styles.dbRowTid}>{title.titleId}</span>
                               <span style={styles.dbRowRegion}>{title.region}</span>
                               {title.versions.length > 0 && (
-                                <span style={styles.dbRowVersion}>v{title.versions[title.versions.length - 1]}</span>
+                                <span style={styles.dbRowVersions}>
+                                  {title.versions.map((v, vi) => (
+                                    <span key={vi} style={styles.dbRowVersion}>v{v}</span>
+                                  ))}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -1883,8 +1887,17 @@ const styles = {
   dbRowRegion: {
     color: COLORS.textDim,
   },
+  dbRowVersions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 3,
+  },
   dbRowVersion: {
     color: COLORS.success,
+    fontSize: 10,
+    background: 'rgba(40, 160, 96, 0.08)',
+    borderRadius: 8,
+    padding: '0 5px',
   },
   dbRowDesc: {
     fontSize: 11,
