@@ -862,20 +862,23 @@ export default function App() {
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Version</label>
                       <div className="nusd-version-chips" style={styles.versionChips}>
-                        {[...availableVersions].reverse().map(v => (
-                          <button
-                            key={v}
-                            className={`nusd-version-chip ${String(v) === version ? 'active' : ''}`}
-                            style={{
-                              ...styles.versionChip,
-                              ...(String(v) === version ? styles.versionChipActive : {}),
-                            }}
-                            onClick={() => setVersion(String(v))}
-                            disabled={isDownloading}
-                          >
-                            v{v}
-                          </button>
-                        ))}
+                        {[...availableVersions].reverse().map(v => {
+                          const publicName = selectedTitle?.publicVersions?.[String(v)];
+                          return (
+                            <button
+                              key={v}
+                              className={`nusd-version-chip ${String(v) === version ? 'active' : ''}`}
+                              style={{
+                                ...styles.versionChip,
+                                ...(String(v) === version ? styles.versionChipActive : {}),
+                              }}
+                              onClick={() => setVersion(String(v))}
+                              disabled={isDownloading}
+                            >
+                              {publicName ? `${publicName} (v${v})` : `v${v}`}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1344,7 +1347,9 @@ export default function App() {
                               {title.versions.length > 0 && (
                                 <span style={styles.dbRowVersions}>
                                   {[...title.versions].reverse().slice(0, 4).map((v, vi) => (
-                                    <span key={vi} style={styles.dbRowVersion}>v{v}</span>
+                                    <span key={vi} style={styles.dbRowVersion}>
+                                      {title.publicVersions?.[String(v)] || `v${v}`}
+                                    </span>
                                   ))}
                                   {title.versions.length > 4 && (
                                     <span style={styles.dbRowVersionMore}>+{title.versions.length - 4}</span>

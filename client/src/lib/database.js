@@ -373,6 +373,7 @@ export function importNUSGetJSON(jsonOrText, platform = 'wii') {
           description: title.Danger || displayCategory,
           hasTicket: title.Ticket !== false,
           danger: title.Danger || null,
+          publicVersions: title['Public Versions'] || null,
         });
       }
     }
