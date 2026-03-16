@@ -343,6 +343,25 @@ button:disabled {
 }
 .nusd-tab.active::after {
   width: 100%;
+  animation: uguisuTab 9s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, #4de0ff 50%, var(--accent) 70%, transparent);
+}
+
+@keyframes uguisuTab {
+  0%    { opacity: 0.3; box-shadow: none; }
+  2.6%  { opacity: 0.9; box-shadow: 0 0 6px var(--accent-glow-strong); }
+  5.3%  { opacity: 0.3; box-shadow: none; }
+  6.8%  { opacity: 0.7; box-shadow: 0 0 4px var(--accent-glow); }
+  8.4%  { opacity: 0.3; box-shadow: none; }
+  21.7% { opacity: 0.3; box-shadow: none; }
+  35%   { opacity: 1;   box-shadow: 0 0 8px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  59.7% { opacity: 1;   box-shadow: 0 0 8px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  60.8% { opacity: 0.5; box-shadow: 0 0 3px var(--accent-glow); }
+  61.9% { opacity: 1;   box-shadow: 0 0 8px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  63.0% { opacity: 0.5; box-shadow: 0 0 3px var(--accent-glow); }
+  64.1% { opacity: 1;   box-shadow: 0 0 8px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  65.2% { opacity: 0.4; box-shadow: none; }
+  100%  { opacity: 0.3; box-shadow: none; }
 }
 .nusd-tab.active {
   color: var(--accent-dark) !important;
