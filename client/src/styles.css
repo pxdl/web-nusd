@@ -180,6 +180,30 @@ button:disabled {
   border-bottom: 1px solid var(--border-light) !important;
 }
 
+/* Wii disc slot glow — uguisu (bush warbler) breathing pattern */
+.nusd-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(280px, 40%);
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: uguisu 4.5s ease-in-out infinite;
+  box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 20px var(--accent-glow);
+}
+
+/* Mimics the uguisu call: quick chirp up, brief hold, slow trail off, pause */
+@keyframes uguisu {
+  0%   { opacity: 0.08; box-shadow: 0 0 2px var(--accent-glow); }
+  10%  { opacity: 0.9;  box-shadow: 0 0 8px var(--accent-glow-strong), 0 0 24px var(--accent-glow); }
+  18%  { opacity: 1;    box-shadow: 0 0 10px var(--accent-glow-strong), 0 0 30px var(--accent-glow); }
+  50%  { opacity: 0.15; box-shadow: 0 0 3px var(--accent-glow); }
+  100% { opacity: 0.08; box-shadow: 0 0 2px var(--accent-glow); }
+}
+
 .nusd-logo-icon {
   animation: pulseGlow 4s ease-in-out infinite;
   border-radius: 50%;
