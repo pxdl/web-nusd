@@ -48,6 +48,7 @@ export default function App() {
   const [proxyUrl, setProxyUrl] = useState('http://localhost:3001');
   const [availableVersions, setAvailableVersions] = useState([]);
   const [selectedTitle, setSelectedTitle] = useState(null);
+  const [manualEntry, setManualEntry] = useState(false);
   const [wadNameTemplate, setWadNameTemplate] = useState('');
 
   // IOS patching
@@ -761,70 +762,131 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Title ID */}
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Title ID</label>
-                <div style={styles.inputRow}>
-                  <input
-                    style={styles.input}
-                    type="text"
-                    placeholder="0000000100000002"
-                    maxLength={16}
-                    value={titleId}
-                    onChange={e => { setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, '')); setAvailableVersions([]); setSelectedTitle(null); }}
-                    disabled={isDownloading}
-                  />
-                  <button
-                    className="nusd-btn-secondary"
-                    style={styles.btnSecondary}
-                    onClick={() => setShowDatabase(!showDatabase)}
-                    disabled={isDownloading}
-                  >
-                    Database
-                  </button>
-                </div>
-                {titleId.length > 0 && titleId.length < 16 && (
-                  <span style={styles.hint}>{16 - titleId.length} more characters needed</span>
-                )}
-              </div>
-
-              {/* Danger Warning */}
-              {dangerWarning && (
-                <div className="nusd-danger-banner" style={styles.dangerBanner}>
-                  <strong>Warning:</strong> {dangerWarning}
-                </div>
-              )}
-
-              {/* Version */}
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Version <span style={styles.optional}>(blank = latest)</span></label>
-                <input
-                  style={{ ...styles.input, width: 120 }}
-                  type="text"
-                  placeholder="Latest"
-                  value={version}
-                  onChange={e => setVersion(e.target.value.replace(/[^0-9]/g, ''))}
-                  disabled={isDownloading}
-                />
-                {availableVersions.length > 1 && (
-                  <div className="nusd-version-chips" style={styles.versionChips}>
-                    {availableVersions.map(v => (
+              {/* Title Selection */}
+              {!manualEntry ? (
+                <>
+                  {/* Database selection mode (default) */}
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Title</label>
+                    {selectedTitle ? (
+                      <div className="nusd-info-card" style={styles.selectedTitleCard}>
+                        <div style={styles.selectedTitleHeader}>
+                          <div>
+                            <div style={styles.selectedTitleName}>{selectedTitle.name}</div>
+                            <div style={styles.selectedTitleMeta}>
+                              <span style={{ color: COLORS.accentDim, fontFamily: 'var(--font-mono)' }}>{selectedTitle.titleId.toUpperCase()}</span>
+                              <span style={{ color: COLORS.textDim }}>{selectedTitle.region}</span>
+                              <span style={{ color: COLORS.textDim }}>{selectedTitle.category}</span>
+                            </div>
+                          </div>
+                          <button
+                            className="nusd-btn-secondary"
+                            style={{ ...styles.btnSecondary, fontSize: 11, padding: '4px 10px' }}
+                            onClick={() => setShowDatabase(true)}
+                            disabled={isDownloading}
+                          >Change</button>
+                        </div>
+                        {selectedTitle.hasTicket === false && (
+                          <div style={{ fontSize: 11, color: COLORS.warning, marginTop: 6 }}>No ticket available — WAD packing and decryption won't work</div>
+                        )}
+                      </div>
+                    ) : (
                       <button
-                        key={v}
-                        className={`nusd-version-chip ${String(v) === version ? 'active' : ''}`}
-                        style={{
-                          ...styles.versionChip,
-                          ...(String(v) === version ? styles.versionChipActive : {}),
-                        }}
-                        onClick={() => setVersion(String(v))}
+                        className="nusd-btn-secondary"
+                        style={{ ...styles.btnSecondary, width: '100%', padding: '12px', textAlign: 'center' }}
+                        onClick={() => setShowDatabase(true)}
                         disabled={isDownloading}
                       >
-                        v{v}
+                        Select from Database
                       </button>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
+
+                  {/* Danger Warning */}
+                  {dangerWarning && (
+                    <div className="nusd-danger-banner" style={styles.dangerBanner}>
+                      <strong>Warning:</strong> {dangerWarning}
+                    </div>
+                  )}
+
+                  {/* Version chips */}
+                  {selectedTitle && availableVersions.length > 0 && (
+                    <div style={styles.fieldGroup}>
+                      <label style={styles.label}>Version</label>
+                      <div className="nusd-version-chips" style={styles.versionChips}>
+                        {availableVersions.map(v => (
+                          <button
+                            key={v}
+                            className={`nusd-version-chip ${String(v) === version ? 'active' : ''}`}
+                            style={{
+                              ...styles.versionChip,
+                              ...(String(v) === version ? styles.versionChipActive : {}),
+                            }}
+                            onClick={() => setVersion(String(v))}
+                            disabled={isDownloading}
+                          >
+                            v{v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    style={styles.manualEntryLink}
+                    onClick={() => setManualEntry(true)}
+                    disabled={isDownloading}
+                  >
+                    Enter title ID manually
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Manual entry mode */}
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Title ID</label>
+                    <input
+                      style={styles.input}
+                      type="text"
+                      placeholder="0000000100000002"
+                      maxLength={16}
+                      value={titleId}
+                      onChange={e => { setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, '')); setAvailableVersions([]); setSelectedTitle(null); }}
+                      disabled={isDownloading}
+                    />
+                    {titleId.length > 0 && titleId.length < 16 && (
+                      <span style={styles.hint}>{16 - titleId.length} more characters needed</span>
+                    )}
+                  </div>
+
+                  {/* Danger Warning */}
+                  {dangerWarning && (
+                    <div className="nusd-danger-banner" style={styles.dangerBanner}>
+                      <strong>Warning:</strong> {dangerWarning}
+                    </div>
+                  )}
+
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Version <span style={styles.optional}>(blank = latest)</span></label>
+                    <input
+                      style={{ ...styles.input, width: 120 }}
+                      type="text"
+                      placeholder="Latest"
+                      value={version}
+                      onChange={e => setVersion(e.target.value.replace(/[^0-9]/g, ''))}
+                      disabled={isDownloading}
+                    />
+                  </div>
+
+                  <button
+                    style={styles.manualEntryLink}
+                    onClick={() => setManualEntry(false)}
+                    disabled={isDownloading}
+                  >
+                    Select from database instead
+                  </button>
+                </>
+              )}
 
               {/* Options */}
               <div style={styles.fieldGroup}>
@@ -1082,21 +1144,6 @@ export default function App() {
 
         {/* ── Right Panel: Log + Info ── */}
         <section className="nusd-panel" style={styles.panelWide}>
-          {/* Selected Title Preview (from database, before download) */}
-          {selectedTitle && !tmdInfo && (
-            <div className="nusd-info-card" style={styles.infoCard}>
-              <h3 style={styles.infoTitle}>{selectedTitle.name}</h3>
-              <div style={styles.infoGrid}>
-                <InfoRow label="Title ID" value={selectedTitle.titleId.toUpperCase()} />
-                <InfoRow label="Region" value={selectedTitle.region} />
-                <InfoRow label="Category" value={selectedTitle.category} />
-                <InfoRow label="Versions" value={`${selectedTitle.versions.length} available`} />
-                <InfoRow label="Ticket" value={selectedTitle.hasTicket ? 'Available' : 'Not available'} />
-                <InfoRow label="Type" value={getTitleType(selectedTitle.titleId)} />
-              </div>
-            </div>
-          )}
-
           {/* TMD Info (after download) */}
           {tmdInfo && (
             <div className="nusd-info-card" style={styles.infoCard}>
@@ -1796,6 +1843,45 @@ const styles = {
     padding: '1px 5px',
     borderRadius: 3,
     textTransform: 'uppercase',
+  },
+  // Selected title card
+  selectedTitleCard: {
+    padding: 12,
+    background: COLORS.accentGlow,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 10,
+  },
+  selectedTitleHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  selectedTitleName: {
+    fontSize: 15,
+    fontWeight: 700,
+    fontFamily: '"Rajdhani", sans-serif',
+    color: COLORS.text,
+    marginBottom: 3,
+  },
+  selectedTitleMeta: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    fontSize: 11,
+  },
+  // Manual entry link
+  manualEntryLink: {
+    background: 'none',
+    border: 'none',
+    color: COLORS.textDim,
+    fontSize: 11,
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    padding: 0,
+    textDecoration: 'underline',
+    textUnderlineOffset: 2,
+    alignSelf: 'flex-start',
   },
   // Version chips
   versionChips: {
