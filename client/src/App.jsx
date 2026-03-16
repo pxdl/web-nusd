@@ -178,20 +178,17 @@ export default function App() {
     } catch { /* keep existing database on error */ }
   }, [platform]);
 
-  // Lock body scroll when modal is open (use paddingRight to compensate for scrollbar removal)
+  // Lock page scroll when modal is open
   useEffect(() => {
+    const html = document.documentElement;
     if (showDatabase) {
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.overflow = 'hidden';
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
+      html.style.overflow = 'hidden';
+      // scrollbar-gutter: stable on html keeps the gutter reserved,
+      // so no padding compensation needed
     } else {
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
+      html.style.overflow = '';
     }
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
-    };
+    return () => { html.style.overflow = ''; };
   }, [showDatabase]);
 
   // Check for danger warnings when title/version/database changes
