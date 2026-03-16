@@ -120,17 +120,17 @@ export default function App() {
   }, []);
 
   // After database loads, try to match the current title ID to a database entry.
-  // If no match and not in manual mode, clear the stale title ID.
+  // If no match and there's a TID present, switch to manual mode to preserve it.
   useEffect(() => {
     if (titleId.length === 16 && !selectedTitle) {
       const match = lookupTitle(titleId, version);
       if (match) {
         setSelectedTitle(match);
         setAvailableVersions(match.versions || []);
-      } else if (!manualEntry) {
-        setTitleId('');
-        setVersion('');
-        setDangerWarning(null);
+        setManualEntry(false);
+      } else if (titleId) {
+        // TID doesn't match database — preserve it in manual mode
+        setManualEntry(true);
       }
     }
   }, [dbVersion]); // runs when database is loaded/changed
@@ -149,7 +149,7 @@ export default function App() {
       window.history.replaceState(null, '', url);
     }, 300);
     return () => clearTimeout(timer);
-  }, [titleId, version, platform, mode]);
+  }, [titleId, version, platform, mode, manualEntry]);
 
   // Check proxy on mount and when URL changes
   useEffect(() => {
@@ -209,6 +209,7 @@ export default function App() {
     setTitleId(title.titleId);
     setAvailableVersions(title.versions || []);
     setSelectedTitle(title);
+    setManualEntry(false);
     if (title.versions.length > 0) {
       setVersion(String(title.versions[title.versions.length - 1]));
     } else {
