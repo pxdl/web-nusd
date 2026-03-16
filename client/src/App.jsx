@@ -1217,71 +1217,84 @@ export default function App() {
           )}
         </section>
 
-        {/* ── Right Panel: Log + Info ── */}
-        <section className="nusd-panel" style={styles.panelWide}>
-          {/* TMD Info (after download) */}
-          {tmdInfo && (
-            <div className="nusd-info-card" style={styles.infoCard}>
-              <h3 style={styles.infoTitle}>Title Info</h3>
-              <div style={styles.infoGrid}>
-                <InfoRow label="Title ID" value={tmdInfo.titleId.toUpperCase()} />
-                <InfoRow label="Version" value={`v${tmdInfo.version}`} />
-                <InfoRow label="Type" value={tmdInfo.type} />
-                <InfoRow label="Contents" value={String(tmdInfo.numContents)} />
-                {platform !== 'dsi' && <InfoRow label="Required IOS" value={tmdInfo.iosVersion} />}
-                <InfoRow label="Total Size" value={formatSize(Number(tmdInfo.totalSize))} />
-              </div>
-            </div>
-          )}
-
-          {/* Progress */}
-          {progress && (
-            <div style={styles.progressArea}>
-              <div style={styles.progressLabel}>
-                {progress.label} ({progress.current}/{progress.total})
-                {progress.pct > 0 && ` — ${progress.pct}%`}
-              </div>
-              <div style={styles.progressBar}>
-                <div className="nusd-progress-fill" style={{
-                  ...styles.progressFill,
-                  width: progress.pct > 0
-                    ? `${progress.pct}%`
-                    : `${(progress.current / progress.total) * 100}%`,
-                }} />
-              </div>
-            </div>
-          )}
-
-          {/* Log Output */}
-          <h3 style={styles.panelTitle}>Output Log</h3>
-          <div ref={logRef} className="nusd-log" style={styles.logBox}>
-            {logs.length === 0 && (
-              <div style={styles.logEmpty}>
-                Ready. Select a title and press "Start NUS Download".
-              </div>
+        {/* ── Right Panel: Wii Message Bubble ── */}
+        <section className="nusd-wii-bubble">
+          {/* Wii-style gray header bar */}
+          <div className="nusd-wii-header">
+            <h3 className="nusd-wii-header-title">
+              {isDownloading ? 'Downloading...' : tmdInfo ? 'Download Result' : 'Console Output'}
+            </h3>
+            {logs.length > 0 && (
+              <button className="nusd-wii-btn" onClick={() => setLogs([])}>
+                Clear
+              </button>
             )}
-            {logs.map((entry, i) => (
-              <div key={i} className="nusd-log-line" style={{
-                ...styles.logLine,
-                color: entry.type === 'error' ? COLORS.error
-                  : entry.type === 'warning' ? COLORS.warning
-                  : entry.type === 'success' ? COLORS.success
-                  : COLORS.textDim,
-              }}>
-                <span style={styles.logTime}>{entry.time}</span>
-                {entry.msg}
-              </div>
-            ))}
           </div>
 
-          {logs.length > 0 && (
-            <button
-              style={styles.btnSmall}
-              onClick={() => setLogs([])}
-            >
-              Clear Log
-            </button>
-          )}
+          <div className="nusd-wii-body">
+            {/* TMD Info (after download) */}
+            {tmdInfo && (
+              <div className="nusd-info-card" style={styles.infoCard}>
+                <div style={styles.infoGrid}>
+                  <InfoRow label="Title ID" value={tmdInfo.titleId.toUpperCase()} />
+                  <InfoRow label="Version" value={`v${tmdInfo.version}`} />
+                  <InfoRow label="Type" value={tmdInfo.type} />
+                  <InfoRow label="Contents" value={String(tmdInfo.numContents)} />
+                  {platform !== 'dsi' && <InfoRow label="Required IOS" value={tmdInfo.iosVersion} />}
+                  <InfoRow label="Total Size" value={formatSize(Number(tmdInfo.totalSize))} />
+                </div>
+              </div>
+            )}
+
+            {/* Progress */}
+            {progress && (
+              <div style={styles.progressArea}>
+                <div style={styles.progressLabel}>
+                  {progress.label} ({progress.current}/{progress.total})
+                  {progress.pct > 0 && ` — ${progress.pct}%`}
+                </div>
+                <div style={styles.progressBar}>
+                  <div className="nusd-progress-fill" style={{
+                    ...styles.progressFill,
+                    width: progress.pct > 0
+                      ? `${progress.pct}%`
+                      : `${(progress.current / progress.total) * 100}%`,
+                  }} />
+                </div>
+              </div>
+            )}
+
+            {/* Wii Loading Dots */}
+            {isDownloading && (
+              <div className="nusd-wii-loading">
+                <div className="nusd-wii-loading-dot" />
+                <div className="nusd-wii-loading-dot" />
+                <div className="nusd-wii-loading-dot" />
+                <div className="nusd-wii-loading-dot" />
+              </div>
+            )}
+
+            {/* Log Output */}
+            <div ref={logRef} className="nusd-log" style={styles.logBox}>
+              {logs.length === 0 && !isDownloading && (
+                <div style={styles.logEmpty}>
+                  Ready. Select a title and press "Start NUS Download".
+                </div>
+              )}
+              {logs.map((entry, i) => (
+                <div key={i} className="nusd-log-line" style={{
+                  ...styles.logLine,
+                  color: entry.type === 'error' ? COLORS.error
+                    : entry.type === 'warning' ? COLORS.warning
+                    : entry.type === 'success' ? COLORS.success
+                    : '#5a6a7a',
+                }}>
+                  <span style={styles.logTime}>{entry.time}</span>
+                  {entry.msg}
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       </main>
 
@@ -1738,16 +1751,16 @@ const styles = {
   },
   // Log
   logBox: {
-    background: '#f6f9fc',
-    border: `1px solid ${COLORS.border}`,
-    borderRadius: 8,
+    background: '#eef1f4',
+    border: `1px solid #d4d8dc`,
+    borderRadius: 12,
     padding: 14,
-    fontFamily: 'inherit',
-    fontSize: 12,
+    fontFamily: '"Fira Code", monospace',
+    fontSize: 11,
     lineHeight: 1.65,
     flex: 1,
-    minHeight: 300,
-    maxHeight: 500,
+    minHeight: 250,
+    maxHeight: 450,
     overflowY: 'auto',
   },
   logLine: {
