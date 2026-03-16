@@ -47,6 +47,7 @@ export default function App() {
   const [useWiiUCDN, setUseWiiUCDN] = useState(false);
   const [proxyUrl, setProxyUrl] = useState('http://localhost:3001');
   const [availableVersions, setAvailableVersions] = useState([]);
+  const [selectedTitle, setSelectedTitle] = useState(null);
   const [wadNameTemplate, setWadNameTemplate] = useState('');
 
   // IOS patching
@@ -185,6 +186,7 @@ export default function App() {
   const selectTitle = (title) => {
     setTitleId(title.titleId);
     setAvailableVersions(title.versions || []);
+    setSelectedTitle(title);
     if (title.versions.length > 0) {
       setVersion(String(title.versions[title.versions.length - 1]));
     } else {
@@ -769,7 +771,7 @@ export default function App() {
                     placeholder="0000000100000002"
                     maxLength={16}
                     value={titleId}
-                    onChange={e => { setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, '')); setAvailableVersions([]); }}
+                    onChange={e => { setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, '')); setAvailableVersions([]); setSelectedTitle(null); }}
                     disabled={isDownloading}
                   />
                   <button
@@ -1080,7 +1082,22 @@ export default function App() {
 
         {/* ── Right Panel: Log + Info ── */}
         <section className="nusd-panel" style={styles.panelWide}>
-          {/* TMD Info */}
+          {/* Selected Title Preview (from database, before download) */}
+          {selectedTitle && !tmdInfo && (
+            <div className="nusd-info-card" style={styles.infoCard}>
+              <h3 style={styles.infoTitle}>{selectedTitle.name}</h3>
+              <div style={styles.infoGrid}>
+                <InfoRow label="Title ID" value={selectedTitle.titleId.toUpperCase()} />
+                <InfoRow label="Region" value={selectedTitle.region} />
+                <InfoRow label="Category" value={selectedTitle.category} />
+                <InfoRow label="Versions" value={`${selectedTitle.versions.length} available`} />
+                <InfoRow label="Ticket" value={selectedTitle.hasTicket ? 'Available' : 'Not available'} />
+                <InfoRow label="Type" value={getTitleType(selectedTitle.titleId)} />
+              </div>
+            </div>
+          )}
+
+          {/* TMD Info (after download) */}
           {tmdInfo && (
             <div className="nusd-info-card" style={styles.infoCard}>
               <h3 style={styles.infoTitle}>Title Info</h3>
