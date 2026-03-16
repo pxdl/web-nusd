@@ -118,6 +118,17 @@ export default function App() {
     if (params.get('mode')) setMode(params.get('mode'));
   }, []);
 
+  // After database loads, try to match the current title ID to a database entry
+  useEffect(() => {
+    if (titleId.length === 16 && !selectedTitle) {
+      const match = lookupTitle(titleId);
+      if (match) {
+        setSelectedTitle(match);
+        setAvailableVersions(match.versions || []);
+      }
+    }
+  }, [dbVersion]); // runs when database is loaded/changed
+
   // Update URL when config changes (shareable links), debounced
   useEffect(() => {
     const timer = setTimeout(() => {
