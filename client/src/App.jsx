@@ -1337,8 +1337,8 @@ export default function App() {
 
       {/* ── Footer ── */}
       <footer className="nusd-footer" style={styles.footer}>
-        <span>Web NUS Downloader — Open Source (GPL-3.0)</span>
-        <span style={styles.textDim}>Based on NUS Downloader by WB3000 / hamachi-mp / WiiDatabase</span>
+        <span>Web NUS Downloader — Open Source (MIT)</span>
+        <span style={styles.textDim}>Based on NUS Downloader by WB3000 / hamachi-mp / WiiDatabase &amp; NUSGet by NinjaCheetah</span>
       </footer>
     </div>
   );

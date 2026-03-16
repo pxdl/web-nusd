@@ -1,172 +1,116 @@
 # Web NUS Downloader
 
-A browser-based client for downloading titles from Nintendo's Update Servers (NUS), inspired by [NUS Downloader](https://github.com/WiiDatabase/nusdownloader) by WB3000/hamachi-mp/WiiDatabase.
+A browser-based client for downloading titles from Nintendo's Update Servers (NUS). Supports Wii, vWii, and DSi platforms with a complete title database, WAD/TAD packing, content decryption, and IOS patching.
+
+![License](https://img.shields.io/badge/license-MIT-blue)
+
+## Features
+
+- **1800+ titles** — Bundled NUSGet databases for Wii (903 titles), vWii (39), and DSi (18), with searchable tree browser
+- **WAD / TAD packing** — Assemble downloads into installable archives with proper certificate chains
+- **Content decryption** — AES-128-CBC via Web Crypto API with SHA-1 verification
+- **IOS patching** — Trucha Bug, ES_Identify, NAND Permissions, Version Patch
+- **vWii support** — Optional title key re-encryption for Wii hardware compatibility
+- **Batch downloads** — Load `.nus` script files to download multiple titles
+- **WAD Tools** — Unpack existing WAD files, export individual components
+- **Shareable URLs** — Title ID, version, platform encoded in URL for easy sharing
+- **Version picker** — Browse all known versions for each title with one-click selection
+- **Database import** — Load NUSGet JSON or original NUSD XML databases
 
 ## Architecture
 
 ```
-┌────────────────────────────────┐     ┌───────────────────┐     ┌──────────────────┐
-│     React Frontend (Vite)      │────▶│  Express Proxy     │────▶│  Nintendo NUS     │
-│                                │     │  Server (Node.js)  │     │  CDN Servers      │
-│  • Title database browser      │     │                    │     │                   │
-│  • TMD/Ticket parsing          │     │  • CORS proxy      │     │  nus.cdn.shop.    │
-│  • WAD packing (binary)        │     │  • Request relay    │     │  wii.com          │
-│  • AES decryption (Web Crypto) │     │  • Error handling   │     │                   │
-│  • SHA-1 verification          │     │                    │     │  ccs.cdn.wup.     │
-│  • File download (Blob API)    │     │                    │     │  shop.nintendo.net│
-└────────────────────────────────┘     └───────────────────┘     └──────────────────┘
-        Browser (client-side)              localhost:3001            Remote servers
+Browser (React + Vite)          Express Proxy (Node.js)         Nintendo CDN
+─────────────────────           ───────────────────────         ────────────
+• Title database                • CORS proxy                    • nus.cdn.shop.wii.com
+• Binary parsing (TMD/Ticket)   • Wii/Wii U/DSi routing         • ccs.cdn.wup.shop.nintendo.net
+• AES decryption (Web Crypto)   • User-agent handling           • nus.cdn.t.shop.nintendowifi.net
+• WAD/TAD/ZIP packing           • Request relay
+• UI and downloads
 ```
 
-**Why a proxy?** Nintendo's CDN servers don't serve CORS headers, so browsers block direct `fetch()` requests. The Express proxy relays these requests — it's the only server-side component. All heavy lifting (parsing, crypto, packing) happens client-side.
-
-## Features
-
-- **Title Database** — Browse and search common Wii system titles, IOS versions, and channels
-- **TMD Parsing** — Full binary parsing of Title Metadata files
-- **Ticket Parsing** — Extract encrypted title keys and metadata from cetk files
-- **WAD Packing** — Assemble downloaded components into installable WAD files
-- **Content Decryption** — AES-128-CBC decryption using Web Crypto API (requires user-provided common key)
-- **SHA-1 Verification** — Verify decrypted content integrity against TMD hashes
-- **Wii U CDN Fallback** — Switch to Wii U CDN when NUS is unavailable
-- **Progress Tracking** — Real-time download progress and detailed logging
+**Why a proxy?** Nintendo's CDN doesn't serve CORS headers. The Express server relays requests — all crypto, parsing, and packing happens client-side in the browser.
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 18+ (for `fetch` support in the proxy server)
-- npm
-
-### Setup
-
 ```bash
-# Clone the repository
-git clone <repo-url>
+# Clone and install
+git clone https://github.com/YOUR_USERNAME/web-nusd.git
 cd web-nusd
-
-# Install all dependencies
 npm run install:all
 
-# Start both server and client in development mode
+# Start both proxy server and React app
 npm run dev
 ```
 
-This will start:
-- **Proxy server** at `http://localhost:3001`
-- **React app** at `http://localhost:5173`
-
-### Manual Setup
-
-If you prefer to run them separately:
-
-```bash
-# Terminal 1: Start the proxy server
-cd server
-npm install
-npm run dev
-
-# Terminal 2: Start the React frontend
-cd client
-npm install
-npm run dev
-```
+Opens at `http://localhost:5173` with the proxy at `http://localhost:3001`.
 
 ## Usage
 
-1. Open `http://localhost:5173` in your browser
-2. Verify the proxy status shows "Connected" (green dot)
-3. Enter a Title ID (16 hex characters) or use the Database browser
-4. Optionally enter a specific version number
-5. Select your options:
-   - **Pack WAD** — Create a .wad file (requires ticket)
-   - **Keep encrypted contents** — Save raw encrypted files
-   - **Create decrypted contents** — Decrypt .app files (requires common key)
-   - **Use Wii U CDN** — Use the Wii U CDN as fallback
-6. Click "Start NUS Download"
+1. **Select a platform** — Wii, vWii, or DSi (loads the appropriate title database)
+2. **Pick a title** — Browse the tree or search by name/TID, or switch to manual entry for custom title IDs
+3. **Choose a version** — Click a version chip or leave blank for latest
+4. **Set options** — Pack WAD, keep encrypted, decrypt contents, IOS patches
+5. **Download** — Click "Start NUS Download"
 
-### Common Title IDs
+### Decryption
 
-| Title | ID | Version |
-|-------|-----|---------|
-| System Menu 4.3U | `0000000100000002` | 513 |
-| System Menu 4.3E | `0000000100000002` | 514 |
-| IOS58 | `000000010000003a` | 6176 |
-| IOS80 | `0000000100000050` | 6944 |
+Content decryption and IOS patching require a **common key** (Wii, Korean, vWii, or DSi depending on the title). Keys are not included for legal reasons — extract from your own console using homebrew tools. Enter as 32 hex characters.
 
-### About Decryption
+### Shareable Links
 
-Content decryption requires the **Wii Common Key**, which is not included in this project for legal reasons. You can extract it from your own Wii console using homebrew tools. The key is 16 bytes (entered as 32 hex characters).
+All configuration is encoded in the URL. Share a link like:
+```
+http://localhost:5173/?tid=0000000100000002&ver=513&console=wii
+```
 
 ## Project Structure
 
 ```
 web-nusd/
-├── server/
-│   ├── index.js          # Express proxy server
-│   └── package.json
 ├── client/
-│   ├── index.html        # Entry HTML
-│   ├── vite.config.js    # Vite configuration
 │   ├── src/
-│   │   ├── main.jsx      # React entry point
-│   │   ├── App.jsx       # Main application component
+│   │   ├── App.jsx              # Main UI component
+│   │   ├── styles.css           # Animations and interactive styles
+│   │   ├── data/                # Bundled NUSGet databases (JSON)
+│   │   │   ├── wii-database.json
+│   │   │   ├── vwii-database.json
+│   │   │   └── dsi-database.json
 │   │   └── lib/
-│   │       ├── nus-client.js  # NUS API client
-│   │       ├── tmd.js         # TMD binary parser
-│   │       ├── ticket.js      # Ticket (cetk) parser
-│   │       ├── wad.js         # WAD packer
-│   │       ├── crypto.js      # AES decryption & SHA-1
-│   │       └── database.js    # Title database
-│   └── package.json
-├── package.json          # Root workspace scripts
+│   │       ├── binary.js        # Shared binary parsing utilities
+│   │       ├── crypto.js        # AES-CBC encryption/decryption, SHA-1
+│   │       ├── database.js      # Title database with NUSGet/NUSD import
+│   │       ├── ios-patcher.js   # IOS binary patching (4 patch types)
+│   │       ├── nus-client.js    # NUS API client with retry logic
+│   │       ├── script-parser.js # .nus batch script parser
+│   │       ├── tmd.js           # Title Metadata parser
+│   │       ├── ticket.js        # Ticket (cetk) parser
+│   │       ├── wad.js           # WAD/TAD packer and unpacker
+│   │       └── zip.js           # Minimal ZIP file creator
+│   └── index.html
+├── server/
+│   └── index.js                 # Express CORS proxy
+├── LICENSE
 └── README.md
 ```
 
-## Technical Details
+## Technical Notes
 
-### Binary Formats
-
-All binary parsing uses native `ArrayBuffer`, `DataView`, and `Uint8Array` — no external dependencies needed. Formats are big-endian as per Nintendo's conventions.
-
-### Cryptography
-
-Uses the **Web Crypto API** (`crypto.subtle`):
-- `AES-CBC` for title key decryption and content decryption
-- `SHA-1` for content integrity verification
-
-No WASM or external crypto libraries required.
-
-### WAD File Format
-
-WADs are structured as:
-1. **Header** (0x20 bytes) — Sizes of each section
-2. **Certificate Chain** — Signing certificates
-3. **Ticket** — Contains encrypted title key
-4. **TMD** — Title metadata with content hashes
-5. **Content Data** — Encrypted content files, each aligned to 0x40 bytes
-
-Each section is aligned to a 64-byte (0x40) boundary.
-
-## Roadmap
-
-- [ ] IOS patching (trucha bug, NAND permissions, etc.)
-- [ ] Batch downloading via NUS scripts
-- [ ] Import/export of database.xml from original NUSD
-- [ ] Wii U title support
-- [ ] DSi title support
-- [ ] Deployable proxy (Cloudflare Worker / Vercel Edge Function)
-- [ ] PWA support for offline use
-- [ ] WAD unpacking / inspection tool
+- **No external crypto dependencies** — Uses the browser's native Web Crypto API for AES-128-CBC and SHA-1
+- **No-padding AES-CBC** — Nintendo doesn't use PKCS7 padding; we work around Web Crypto's requirement by appending a synthetic padding block
+- **Certificate chain** — Downloaded from System Menu 4.3U (CA + CP + XS), with fallback to TMD extraction
+- **boot2 support** — TID `0000000100000001` uses WAD type `"ib"` instead of `"Is"`
+- **TAD format** — DSi archives swap the Meta and Content sections relative to WAD
+- **vWii re-encryption** — Decrypts title key with vWii common key, re-encrypts with Wii common key for hardware compatibility
 
 ## Credits
 
-- **WB3000** — Original NUS Downloader
+- **[WB3000](https://github.com/WB3000/nusdownloader)** — Original NUS Downloader
 - **hamachi-mp** — NUS Downloader v1.9 Mod
-- **WiiDatabase** — NUS-Fix mod and PyNUSD
-- **WiiBrew community** — Format documentation
-- **grp** — Wii.py crypto reference
+- **[WiiDatabase](https://github.com/WiiDatabase/nusdownloader)** — NUSD fork with Wii U CDN support
+- **[NinjaCheetah / NUSGet](https://github.com/NinjaCheetah/NUSGet)** — Title databases and feature reference
+- **[WiiBrew](https://wiibrew.org)** / **[DSiBrew](https://dsibrew.org)** — Format documentation
 
 ## License
 
-GPL-3.0, consistent with the original NUS Downloader.
+[MIT](LICENSE)
