@@ -118,13 +118,18 @@ export default function App() {
     if (params.get('mode')) setMode(params.get('mode'));
   }, []);
 
-  // After database loads, try to match the current title ID to a database entry
+  // After database loads, try to match the current title ID to a database entry.
+  // If no match and not in manual mode, clear the stale title ID.
   useEffect(() => {
     if (titleId.length === 16 && !selectedTitle) {
       const match = lookupTitle(titleId, version);
       if (match) {
         setSelectedTitle(match);
         setAvailableVersions(match.versions || []);
+      } else if (!manualEntry) {
+        setTitleId('');
+        setVersion('');
+        setDangerWarning(null);
       }
     }
   }, [dbVersion]); // runs when database is loaded/changed
@@ -1022,11 +1027,11 @@ export default function App() {
               <button
                 style={{
                   ...styles.btnPrimary,
-                  opacity: isDownloading || proxyStatus !== 'ok' ? 0.5 : 1,
+                  opacity: (isDownloading || proxyStatus !== 'ok' || (!manualEntry && !selectedTitle) || (manualEntry && titleId.length !== 16)) ? 0.5 : 1,
                 }}
                 className="nusd-btn-primary"
                 onClick={handleDownload}
-                disabled={isDownloading || proxyStatus !== 'ok'}
+                disabled={isDownloading || proxyStatus !== 'ok' || (!manualEntry && !selectedTitle) || (manualEntry && titleId.length !== 16)}
               >
                 {isDownloading ? 'Downloading...' : 'Start NUS Download'}
               </button>
