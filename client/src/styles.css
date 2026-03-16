@@ -223,11 +223,30 @@ button:disabled {
 
 /* ─── Panels (Wii Channel Tiles) ─────────────────────────── */
 .nusd-panel {
-  animation: fadeIn 0.35s ease-out;
   background: var(--surface) !important;
   border: 1px solid var(--border-light) !important;
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-md);
+}
+
+/* Card shuffle animation on the controls panel */
+.nusd-panel-animated {
+  animation: cardDeal 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom left;
+}
+
+@keyframes cardDeal {
+  0% {
+    opacity: 0;
+    transform: translateX(40px) rotate(2deg) scale(0.96);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotate(0) scale(1);
+  }
 }
 
 /* ─── Toggle Buttons (Platform Selector) ─────────────────── */

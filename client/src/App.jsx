@@ -754,7 +754,7 @@ export default function App() {
 
       <main className="nusd-main" style={styles.main}>
         {/* ── Left Panel: Controls ── */}
-        <section className="nusd-panel" style={styles.panel}>
+        <section key={mode} className="nusd-panel nusd-panel-animated" style={styles.panel}>
           {mode === 'download' && (
             <>
               <h2 style={styles.panelTitle}>Title Configuration</h2>
