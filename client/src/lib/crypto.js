@@ -124,6 +124,13 @@ export async function verifyContent(decryptedContent, expectedHash, expectedSize
   const trimmed = decryptedContent.slice(0, Number(expectedSize));
   const actualHash = await sha1(trimmed);
 
+  // Compare bytes directly for speed, build hex strings only for the result
+  let valid = actualHash.length === expectedHash.length;
+  if (valid) {
+    for (let i = 0; i < actualHash.length; i++) {
+      if (actualHash[i] !== expectedHash[i]) { valid = false; break; }
+    }
+  }
   const hashHex = Array.from(actualHash).map(b => b.toString(16).padStart(2, '0')).join('');
   const expectedHex = Array.from(expectedHash).map(b => b.toString(16).padStart(2, '0')).join('');
 

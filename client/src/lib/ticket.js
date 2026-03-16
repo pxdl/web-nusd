@@ -10,7 +10,7 @@
  *   0x140: u8[64]  issuer
  *   0x180: u8[60]  ecdh_data
  *   0x1BC: u8[3]   padding2
- *   0x1BF: u8[16]  encrypted_title_key  ← the key we need
+ *   0x1BF: u8[16]  encrypted_title_key  <- the key we need
  *   0x1CF: u8      unknown
  *   0x1D0: u8[8]   ticket_id
  *   0x1D8: u32     console_id
@@ -27,6 +27,9 @@
  *   0x264: u8[...]  time limits
  */
 
+import { getSignedHeaderOffset, readNullTermString, readU64Hex, bytesToHex } from './binary.js';
+import { COMMON_KEY_NAMES } from './crypto.js';
+
 export class Ticket {
   constructor(data) {
     if (!(data instanceof ArrayBuffer)) {
@@ -40,43 +43,18 @@ export class Ticket {
 
   parse() {
     this.sigType = this.view.getUint32(0x000);
+    const headerOffset = getSignedHeaderOffset(this.sigType);
 
-    let headerOffset;
-    switch (this.sigType) {
-      case 0x00010000: headerOffset = 4 + 512 + 60; break; // RSA-4096
-      case 0x00010001: headerOffset = 4 + 256 + 60; break; // RSA-2048
-      case 0x00010002: headerOffset = 4 + 60 + 64; break;  // ECDSA
-      default: headerOffset = 0x140;
-    }
-
-    this.issuer = this.readString(headerOffset, 64);
+    this.issuer = readNullTermString(this.raw, headerOffset, 64);
 
     // Encrypted title key (16 bytes at offset 0x7F from header start)
     this.encryptedTitleKey = new Uint8Array(this.raw, headerOffset + 0x7F, 16);
 
-    this.ticketId = this.readHex(headerOffset + 0x90, 8);
+    this.ticketId = bytesToHex(new Uint8Array(this.raw, headerOffset + 0x90, 8));
     this.consoleId = this.view.getUint32(headerOffset + 0x98);
-    this.titleId = this.readU64Hex(headerOffset + 0x9C);
+    this.titleId = readU64Hex(this.view, headerOffset + 0x9C);
     this.titleVersion = this.view.getUint16(headerOffset + 0xA6);
     this.commonKeyIndex = this.view.getUint8(headerOffset + 0xB1);
-  }
-
-  readString(offset, length) {
-    const bytes = new Uint8Array(this.raw, offset, length);
-    const nullIdx = bytes.indexOf(0);
-    const end = nullIdx >= 0 ? nullIdx : length;
-    return new TextDecoder('ascii').decode(bytes.slice(0, end));
-  }
-
-  readHex(offset, length) {
-    const bytes = new Uint8Array(this.raw, offset, length);
-    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  readU64Hex(offset) {
-    const high = this.view.getUint32(offset).toString(16).padStart(8, '0');
-    const low = this.view.getUint32(offset + 4).toString(16).padStart(8, '0');
-    return high + low;
   }
 
   /** The raw ticket data for WAD packing */
@@ -86,11 +64,6 @@ export class Ticket {
 
   /** Get common key name */
   get commonKeyName() {
-    switch (this.commonKeyIndex) {
-      case 0: return 'Wii Common Key';
-      case 1: return 'Korean Key';
-      case 2: return 'vWii Key';
-      default: return `Unknown (${this.commonKeyIndex})`;
-    }
+    return COMMON_KEY_NAMES[this.commonKeyIndex] || `Unknown (${this.commonKeyIndex})`;
   }
 }

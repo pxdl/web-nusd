@@ -31,6 +31,8 @@
  *   0x10: u8[20] sha1_hash
  */
 
+import { getSignedHeaderOffset, readNullTermString, readU64Hex, readU64 } from './binary.js';
+
 export class TMD {
   constructor(data) {
     if (!(data instanceof ArrayBuffer)) {
@@ -43,34 +45,11 @@ export class TMD {
   }
 
   parse() {
-    // Signature type
     this.sigType = this.view.getUint32(0x000);
-
-    // Determine signature size based on type
-    let sigSize, padSize, headerOffset;
-    switch (this.sigType) {
-      case 0x00010000: // RSA-4096
-        sigSize = 512;
-        padSize = 60;
-        break;
-      case 0x00010001: // RSA-2048 (most common for Wii)
-        sigSize = 256;
-        padSize = 60;
-        break;
-      case 0x00010002: // ECDSA
-        sigSize = 60;
-        padSize = 64;
-        break;
-      default:
-        // Fallback to RSA-2048
-        sigSize = 256;
-        padSize = 60;
-    }
-
-    headerOffset = 4 + sigSize + padSize;
+    const headerOffset = getSignedHeaderOffset(this.sigType);
 
     // Issuer (64 bytes, null-terminated ASCII)
-    this.issuer = this.readString(headerOffset, 64);
+    this.issuer = readNullTermString(this.raw, headerOffset, 64);
 
     // Header fields
     this.version = this.view.getUint8(headerOffset + 0x40);
@@ -79,10 +58,10 @@ export class TMD {
     this.isVWii = this.view.getUint8(headerOffset + 0x43) === 1;
 
     // IOS Title ID (8 bytes)
-    this.iosTitleId = this.readU64Hex(headerOffset + 0x44);
+    this.iosTitleId = readU64Hex(this.view, headerOffset + 0x44);
 
     // Title ID (8 bytes)
-    this.titleId = this.readU64Hex(headerOffset + 0x4C);
+    this.titleId = readU64Hex(this.view, headerOffset + 0x4C);
 
     this.titleType = this.view.getUint32(headerOffset + 0x54);
     this.groupId = this.view.getUint16(headerOffset + 0x58);
@@ -102,7 +81,7 @@ export class TMD {
         id: this.view.getUint32(offset + 0x00),
         index: this.view.getUint16(offset + 0x04),
         type: this.view.getUint16(offset + 0x06),
-        size: this.readU64(offset + 0x08),
+        size: readU64(this.view, offset + 0x08),
         hash: new Uint8Array(this.raw, offset + 0x10, 20),
       };
 
@@ -116,25 +95,6 @@ export class TMD {
 
       this.contents.push(content);
     }
-  }
-
-  readString(offset, length) {
-    const bytes = new Uint8Array(this.raw, offset, length);
-    const nullIdx = bytes.indexOf(0);
-    const end = nullIdx >= 0 ? nullIdx : length;
-    return new TextDecoder('ascii').decode(bytes.slice(0, end));
-  }
-
-  readU64(offset) {
-    const high = this.view.getUint32(offset);
-    const low = this.view.getUint32(offset + 4);
-    return BigInt(high) * BigInt(0x100000000) + BigInt(low);
-  }
-
-  readU64Hex(offset) {
-    const high = this.view.getUint32(offset).toString(16).padStart(8, '0');
-    const low = this.view.getUint32(offset + 4).toString(16).padStart(8, '0');
-    return high + low;
   }
 
   /** Get human-readable IOS version string */

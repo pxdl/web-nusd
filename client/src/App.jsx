@@ -5,6 +5,7 @@ import { Ticket } from './lib/ticket.js';
 import { packWAD, packTAD, unpackWAD, extractCertsFromTMD, generateWadFilename } from './lib/wad.js';
 import { decryptTitleKey, decryptContent, encryptTitleKey, verifyContent, parseCommonKey, COMMON_KEY_NAMES } from './lib/crypto.js';
 import { TITLE_DATABASE, CATEGORIES, REGIONS, searchTitles, getTitleType, lookupTitle, importDatabaseXML, importNUSGetJSON, getActiveCategories } from './lib/database.js';
+import { getSignedHeaderOffset } from './lib/binary.js';
 import { isIOSTitle, getIOSNumber, patchIOS, PATCHES } from './lib/ios-patcher.js';
 import { parseNUSScript } from './lib/script-parser.js';
 import { createZip } from './lib/zip.js';
@@ -348,14 +349,7 @@ export default function App() {
             const reencTitleKey = await encryptTitleKey(decTitleKey, wiiKey, tmd.titleId);
             // Patch ticket: write re-encrypted key and set common key index to 0
             finalTicketBytes = new Uint8Array(ticketBytes);
-            // Compute header offset based on signature type
-            let tkHeaderOffset;
-            switch (ticket.sigType) {
-              case 0x00010000: tkHeaderOffset = 4 + 512 + 60; break; // RSA-4096
-              case 0x00010001: tkHeaderOffset = 4 + 256 + 60; break; // RSA-2048
-              case 0x00010002: tkHeaderOffset = 4 + 60 + 64; break;  // ECDSA
-              default: tkHeaderOffset = 0x140;
-            }
+            const tkHeaderOffset = getSignedHeaderOffset(ticket.sigType);
             finalTicketBytes.set(reencTitleKey, tkHeaderOffset + 0x7F); // encrypted title key
             finalTicketBytes[tkHeaderOffset + 0xB1] = 0; // commonKeyIndex = 0 (Wii)
             log('  Title key re-encrypted (vWii → Wii)', 'success');

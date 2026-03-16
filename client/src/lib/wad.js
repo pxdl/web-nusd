@@ -25,6 +25,8 @@
  * Reference: https://wiibrew.org/wiki/WAD_files
  */
 
+import { getSignedHeaderOffset } from './binary.js';
+
 const ALIGNMENT = 0x40;
 
 /** Align a size to the nearest multiple of ALIGNMENT */
@@ -138,14 +140,7 @@ export function unpackWAD(wadData) {
 
   // Parse TMD to get content records
   const tmdView = new DataView(tmd.buffer, tmd.byteOffset, tmd.byteLength);
-  const sigType = tmdView.getUint32(0);
-  let tmdHeaderOffset;
-  switch (sigType) {
-    case 0x00010000: tmdHeaderOffset = 4 + 512 + 60; break;
-    case 0x00010001: tmdHeaderOffset = 4 + 256 + 60; break;
-    case 0x00010002: tmdHeaderOffset = 4 + 60 + 64; break;
-    default: tmdHeaderOffset = 0x140;
-  }
+  const tmdHeaderOffset = getSignedHeaderOffset(tmdView.getUint32(0));
   const numContents = tmdView.getUint16(tmdHeaderOffset + 0x9E);
 
   const contents = [];
@@ -190,15 +185,9 @@ export function unpackWAD(wadData) {
  * @returns {Uint8Array|null} Certificate chain or null if not found
  */
 export function extractCertsFromTMD(tmdData, numContents) {
-  const sigType = new DataView(tmdData.buffer, tmdData.byteOffset).getUint32(0);
-
-  let headerSize;
-  switch (sigType) {
-    case 0x00010000: headerSize = 4 + 512 + 60; break;
-    case 0x00010001: headerSize = 4 + 256 + 60; break;
-    case 0x00010002: headerSize = 4 + 60 + 64; break;
-    default: headerSize = 0x140;
-  }
+  const headerSize = getSignedHeaderOffset(
+    new DataView(tmdData.buffer, tmdData.byteOffset).getUint32(0)
+  );
 
   const tmdBodyEnd = headerSize + 0xA4 + numContents * 0x24;
 
