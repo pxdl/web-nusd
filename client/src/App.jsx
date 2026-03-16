@@ -74,6 +74,16 @@ export default function App() {
   // WAD tools
   const [wadUnpackResult, setWadUnpackResult] = useState(null);
 
+  // Modal close animation
+  const [dbClosing, setDbClosing] = useState(false);
+  const closeDatabase = useCallback(() => {
+    setDbClosing(true);
+    setTimeout(() => {
+      setShowDatabase(false);
+      setDbClosing(false);
+    }, 200);
+  }, []);
+
   // Database version counter — incremented to force re-render after import
   const [dbVersion, setDbVersion] = useState(0);
 
@@ -146,7 +156,7 @@ export default function App() {
     } else {
       setVersion('');
     }
-    setShowDatabase(false);
+    closeDatabase();
     log(`Selected: ${title.name} (${title.titleId})`, 'info');
 
     // Auto-detect platform from title ID
@@ -1060,15 +1070,15 @@ export default function App() {
 
       {/* ── Database Modal ── */}
       {showDatabase && (
-        <div className="nusd-modal-overlay" style={styles.modalOverlay} onClick={() => setShowDatabase(false)}>
-          <div className="nusd-modal" style={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={`nusd-modal-overlay ${dbClosing ? 'closing' : ''}`} style={styles.modalOverlay} onClick={closeDatabase}>
+          <div className={`nusd-modal ${dbClosing ? 'closing' : ''}`} style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h2 style={styles.modalTitle}>Title Database</h2>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button style={styles.btnSmall} onClick={handleImportDB}>
                   Import DB
                 </button>
-                <button style={styles.btnClose} onClick={() => setShowDatabase(false)}>&#x2715;</button>
+                <button style={styles.btnClose} onClick={closeDatabase}>&#x2715;</button>
               </div>
             </div>
 

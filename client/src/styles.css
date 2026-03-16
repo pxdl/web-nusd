@@ -116,6 +116,16 @@ body::before {
   50% { opacity: 0.6; transform: scale(0.85); }
 }
 
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideDown {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(16px) scale(0.97); }
+}
+
 @keyframes typeIn {
   from { opacity: 0; transform: translateX(-3px); }
   to { opacity: 1; transform: translateX(0); }
@@ -386,11 +396,19 @@ button:disabled {
   background: rgba(44, 58, 72, 0.35) !important;
 }
 .nusd-modal {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   box-shadow: var(--shadow-xl);
   border-radius: var(--radius) !important;
   border: 1px solid var(--border-light) !important;
   background: var(--surface) !important;
+}
+
+/* Close animations */
+.nusd-modal-overlay.closing {
+  animation: fadeOut 0.2s ease-in forwards;
+}
+.nusd-modal.closing {
+  animation: slideDown 0.2s ease-in forwards;
 }
 
 /* ─── Database Rows ──────────────────────────────────────── */
