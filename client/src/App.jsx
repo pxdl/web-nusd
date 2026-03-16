@@ -141,6 +141,12 @@ export default function App() {
     check();
   }, [proxyUrl]);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = showDatabase ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [showDatabase]);
+
   // Check for danger warnings when title ID changes
   useEffect(() => {
     if (titleId.length === 16) {

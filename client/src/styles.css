@@ -394,6 +394,7 @@ button:disabled {
   animation: fadeIn 0.15s ease-out;
   backdrop-filter: blur(6px);
   background: rgba(44, 58, 72, 0.35) !important;
+  overscroll-behavior: contain;
 }
 .nusd-modal {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
