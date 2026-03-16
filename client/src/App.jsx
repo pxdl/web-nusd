@@ -141,10 +141,20 @@ export default function App() {
     check();
   }, [proxyUrl]);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll when modal is open (use paddingRight to compensate for scrollbar removal)
   useEffect(() => {
-    document.body.style.overflow = showDatabase ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    if (showDatabase) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
   }, [showDatabase]);
 
   // Check for danger warnings when title ID changes
