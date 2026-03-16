@@ -7,6 +7,11 @@ const PORT = process.env.PORT || 3001;
 // NUS CDN base URLs
 const NUS_BASE = 'http://nus.cdn.shop.wii.com/ccs/download';
 const WII_U_CDN_BASE = 'http://ccs.cdn.wup.shop.nintendo.net/ccs/download';
+const DSI_CDN_BASE = 'http://nus.cdn.t.shop.nintendowifi.net/ccs/download';
+
+// User-Agent strings (required by Nintendo CDN)
+const WII_USER_AGENT = 'wii libnup/1.0';
+const DSI_USER_AGENT = 'Opera/9.50 (Nintendo; Opera/154; U; Nintendo DS; en)';
 
 app.use(cors());
 app.use(express.json());
@@ -18,16 +23,34 @@ app.get('/api/health', (req, res) => {
 
 /**
  * Proxy endpoint for NUS downloads.
+ *
  * Routes:
- *   GET /api/nus/:titleId/tmd           → fetches TMD (latest version)
- *   GET /api/nus/:titleId/tmd/:version  → fetches TMD for specific version
- *   GET /api/nus/:titleId/cetk          → fetches ticket
- *   GET /api/nus/:titleId/:contentId    → fetches encrypted content
+ *   GET /api/nus/:titleId/tmd           → TMD (latest version)
+ *   GET /api/nus/:titleId/tmd/:version  → TMD for specific version
+ *   GET /api/nus/:titleId/cetk          → Ticket
+ *   GET /api/nus/:titleId/:contentId    → Encrypted content
+ *
+ * Query params:
+ *   ?wiiu=1  → Use Wii U CDN (for Wii titles when original NUS is down)
+ *   ?dsi=1   → Use DSi CDN with DSi user-agent
  */
 app.get('/api/nus/:titleId/:resource/:extra?', async (req, res) => {
   const { titleId, resource, extra } = req.params;
   const useWiiU = req.query.wiiu === '1';
-  const base = useWiiU ? WII_U_CDN_BASE : NUS_BASE;
+  const useDSi = req.query.dsi === '1';
+
+  // Select CDN and user-agent based on platform
+  let base, userAgent;
+  if (useDSi) {
+    base = DSI_CDN_BASE;
+    userAgent = DSI_USER_AGENT;
+  } else if (useWiiU) {
+    base = WII_U_CDN_BASE;
+    userAgent = WII_USER_AGENT;
+  } else {
+    base = NUS_BASE;
+    userAgent = WII_USER_AGENT;
+  }
 
   // Validate title ID format (16 hex chars)
   if (!/^[0-9a-fA-F]{16}$/.test(titleId)) {
@@ -44,12 +67,13 @@ app.get('/api/nus/:titleId/:resource/:extra?', async (req, res) => {
     url = `${base}/${titleId}/${resource}`;
   }
 
-  console.log(`[NUS Proxy] ${req.method} → ${url}`);
+  const platform = useDSi ? 'DSi' : useWiiU ? 'WiiU' : 'Wii';
+  console.log(`[NUS Proxy] [${platform}] ${req.method} → ${url}`);
 
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'wii libnup/1.0',
+        'User-Agent': userAgent,
       },
     });
 

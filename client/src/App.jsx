@@ -2,9 +2,12 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { NUSClient, NUSError } from './lib/nus-client.js';
 import { TMD } from './lib/tmd.js';
 import { Ticket } from './lib/ticket.js';
-import { packWAD, extractCertsFromTMD, generateWadFilename } from './lib/wad.js';
-import { decryptTitleKey, decryptContent, verifyContent, parseCommonKey } from './lib/crypto.js';
-import { TITLE_DATABASE, CATEGORIES, REGIONS, searchTitles, getTitleType } from './lib/database.js';
+import { packWAD, unpackWAD, extractCertsFromTMD, generateWadFilename } from './lib/wad.js';
+import { decryptTitleKey, decryptContent, verifyContent, parseCommonKey, COMMON_KEY_NAMES } from './lib/crypto.js';
+import { TITLE_DATABASE, CATEGORIES, REGIONS, searchTitles, getTitleType, lookupTitle, importDatabaseXML, getActiveCategories } from './lib/database.js';
+import { isIOSTitle, getIOSNumber, patchIOS, PATCHES } from './lib/ios-patcher.js';
+import { parseNUSScript } from './lib/script-parser.js';
+import { createZip } from './lib/zip.js';
 
 // ─── Styles ───────────────────────────────────────────────
 const COLORS = {
@@ -20,27 +23,50 @@ const COLORS = {
   text: '#e2e8f0',
   textDim: '#64748b',
   border: '#1e293b',
+  danger: '#ff2040',
+  dangerBg: 'rgba(255, 32, 64, 0.1)',
 };
 
 // ─── Main App ─────────────────────────────────────────────
 export default function App() {
+  // Mode: 'download', 'batch', 'wadtools'
+  const [mode, setMode] = useState('download');
+
+  // Download config
   const [titleId, setTitleId] = useState('');
   const [version, setVersion] = useState('');
+  const [platform, setPlatform] = useState('wii'); // 'wii' or 'dsi'
   const [packWad, setPackWad] = useState(true);
   const [keepEncrypted, setKeepEncrypted] = useState(false);
   const [decryptContents, setDecryptContents] = useState(false);
   const [commonKeyHex, setCommonKeyHex] = useState('');
   const [useWiiUCDN, setUseWiiUCDN] = useState(false);
   const [proxyUrl, setProxyUrl] = useState('http://localhost:3001');
+  const [wadNameTemplate, setWadNameTemplate] = useState('');
 
+  // IOS patching
+  const [patchTrucha, setPatchTrucha] = useState(false);
+  const [patchESIdentify, setPatchESIdentify] = useState(false);
+  const [patchNAND, setPatchNAND] = useState(false);
+
+  // State
   const [logs, setLogs] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [progress, setProgress] = useState(null); // { current, total, label }
+  const [progress, setProgress] = useState(null);
   const [tmdInfo, setTmdInfo] = useState(null);
   const [showDatabase, setShowDatabase] = useState(false);
   const [dbSearch, setDbSearch] = useState('');
   const [dbCategory, setDbCategory] = useState('');
-  const [proxyStatus, setProxyStatus] = useState('unknown'); // unknown, ok, error
+  const [proxyStatus, setProxyStatus] = useState('unknown');
+  const [commonKeyNeeded, setCommonKeyNeeded] = useState(null);
+  const [dangerWarning, setDangerWarning] = useState(null);
+
+  // Batch download
+  const [batchQueue, setBatchQueue] = useState([]);
+  const [batchProgress, setBatchProgress] = useState(null);
+
+  // WAD tools
+  const [wadUnpackResult, setWadUnpackResult] = useState(null);
 
   const logRef = useRef(null);
 
@@ -69,6 +95,16 @@ export default function App() {
     check();
   }, [proxyUrl]);
 
+  // Check for danger warnings when title ID changes
+  useEffect(() => {
+    if (titleId.length === 16) {
+      const title = lookupTitle(titleId);
+      setDangerWarning(title?.danger || null);
+    } else {
+      setDangerWarning(null);
+    }
+  }, [titleId]);
+
   // ─── Database Selection ─────────────────────
   const selectTitle = (title) => {
     setTitleId(title.titleId);
@@ -79,9 +115,37 @@ export default function App() {
     }
     setShowDatabase(false);
     log(`Selected: ${title.name} (${title.titleId})`, 'info');
+
+    // Auto-detect platform from title ID
+    const upper = title.titleId.slice(0, 8);
+    if (upper.startsWith('00030')) {
+      setPlatform('dsi');
+    }
   };
 
-  // ─── Download Handler ───────────────────────
+  // ─── Database XML Import ────────────────────
+  const handleImportDB = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xml';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const result = importDatabaseXML(text);
+        log(`Imported ${result.imported} titles from ${file.name}`, 'success');
+        log(`  Categories: ${result.categories.join(', ')}`);
+        // Force re-render of database
+        setDbSearch(prev => prev);
+      } catch (err) {
+        log(`Import failed: ${err.message}`, 'error');
+      }
+    };
+    input.click();
+  };
+
+  // ─── Single Download Handler ────────────────
   const handleDownload = async () => {
     const tid = titleId.trim().toLowerCase();
     if (!/^[0-9a-f]{16}$/.test(tid)) {
@@ -93,21 +157,27 @@ export default function App() {
     setLogs([]);
     setTmdInfo(null);
     setProgress(null);
+    setCommonKeyNeeded(null);
 
     const client = new NUSClient(proxyUrl);
     client.useWiiU = useWiiUCDN;
+    client.platform = platform;
+
+    const onRetry = (attempt, max, delay) => {
+      log(`  Retry ${attempt}/${max} in ${delay}ms...`, 'warning');
+    };
 
     try {
       // ── Step 1: Download TMD ──
       log(`Downloading TMD for ${tid.toUpperCase()}...`);
       const tmdVer = version.trim() ? parseInt(version) : undefined;
-      const tmdData = await client.downloadTMD(tid, tmdVer);
+      const tmdData = await client.downloadTMD(tid, tmdVer, onRetry);
       const tmd = new TMD(tmdData);
 
       log(`TMD parsed: ${tmd.numContents} content(s), v${tmd.titleVersion}`, 'success');
       log(`  Title ID: ${tmd.titleId.toUpperCase()}`);
       log(`  Type: ${getTitleType(tmd.titleId)}`);
-      log(`  Required: ${tmd.iosVersion}`);
+      if (platform !== 'dsi') log(`  Required: ${tmd.iosVersion}`);
       log(`  Total size: ${formatSize(Number(tmd.totalSize))}`);
 
       setTmdInfo({
@@ -124,9 +194,11 @@ export default function App() {
       let ticket = null;
       try {
         log('Downloading ticket (cetk)...');
-        ticketData = await client.downloadTicket(tid);
+        ticketData = await client.downloadTicket(tid, onRetry);
         ticket = new Ticket(ticketData);
-        log(`Ticket obtained (${ticket.commonKeyName})`, 'success');
+        const keyName = COMMON_KEY_NAMES[platform === 'dsi' ? 'dsi' : ticket.commonKeyIndex] || `Unknown (${ticket.commonKeyIndex})`;
+        log(`Ticket obtained (${keyName})`, 'success');
+        setCommonKeyNeeded(platform === 'dsi' ? 'dsi' : ticket.commonKeyIndex);
       } catch (err) {
         if (err.status === 404) {
           log('Ticket not available (title may require purchase).', 'warning');
@@ -146,6 +218,7 @@ export default function App() {
           current: i + 1,
           total: tmd.contents.length,
           label: `Content ${content.idHex} (${formatSize(Number(content.size))})`,
+          pct: 0,
         });
 
         log(`Downloading content ${content.idHex} [${i + 1}/${tmd.contents.length}]...`);
@@ -155,19 +228,19 @@ export default function App() {
           content.idHex,
           (loaded, total) => {
             const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
-            setProgress(prev => ({ ...prev, pct }));
-          }
+            setProgress(prev => prev ? { ...prev, pct } : null);
+          },
+          onRetry
         );
 
         contentBuffers.push(new Uint8Array(contentData));
-        log(`  ✓ ${content.idHex} downloaded (${formatSize(contentData.byteLength)})`, 'success');
+        log(`  Done: ${content.idHex} (${formatSize(contentData.byteLength)})`, 'success');
       }
 
       // ── Step 4: Pack WAD ──
       if (packWad && ticket) {
         log('Packing WAD...');
 
-        // Extract cert chain from TMD
         const tmdBytes = new Uint8Array(tmdData);
         const certs = extractCertsFromTMD(tmdBytes, tmd.numContents);
 
@@ -176,32 +249,78 @@ export default function App() {
           certChain = certs;
           log(`  Certificate chain extracted (${certs.length} bytes)`);
         } else {
-          // Minimal empty cert chain — WAD will still work with most tools
           certChain = new Uint8Array(0);
           log('  No certificate chain found in TMD', 'warning');
         }
 
         const ticketBytes = new Uint8Array(ticketData);
-        const wadData = packWAD(certChain, ticketBytes, tmdBytes, contentBuffers);
 
-        const filename = generateWadFilename(tid, tmd.titleVersion);
+        // Determine if we need to pack a patched WAD
+        const isIOS = isIOSTitle(tid);
+        const patchTypes = [];
+        if (isIOS && patchTrucha) patchTypes.push('trucha');
+        if (isIOS && patchESIdentify) patchTypes.push('esIdentify');
+        if (isIOS && patchNAND) patchTypes.push('nandPermissions');
+
+        if (patchTypes.length > 0 && commonKeyHex.trim()) {
+          // Need to decrypt, patch, re-encrypt for patched WAD
+          log('  Applying IOS patches before packing...', 'info');
+          try {
+            const commonKey = parseCommonKey(commonKeyHex.trim());
+            const titleKey = await decryptTitleKey(ticket.encryptedTitleKey, commonKey, tmd.titleId);
+
+            const patchedBuffers = [];
+            for (let i = 0; i < tmd.contents.length; i++) {
+              const content = tmd.contents[i];
+              let decrypted = await decryptContent(contentBuffers[i], titleKey, content.index);
+              decrypted = decrypted.slice(0, Number(content.size));
+
+              const { data: patched, results } = patchIOS(decrypted, patchTypes);
+              for (const r of results) {
+                if (r.applied) {
+                  log(`    ${r.patch}: applied at offset 0x${r.offset.toString(16)}`, 'success');
+                } else {
+                  log(`    ${r.patch}: pattern not found`, 'warning');
+                }
+              }
+              patchedBuffers.push(patched);
+            }
+
+            // Pack patched WAD (with decrypted patched content — tools handle re-encryption)
+            const patchedWad = packWAD(certChain, ticketBytes, tmdBytes, patchedBuffers);
+            const dbTitle = lookupTitle(tid);
+            const patchedFilename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate).replace('.wad', '.patched.wad');
+            downloadBlob(patchedWad, patchedFilename);
+            log(`Patched WAD saved: ${patchedFilename} (${formatSize(patchedWad.length)})`, 'success');
+          } catch (err) {
+            log(`IOS patching failed: ${err.message}. Packing unpatched WAD.`, 'error');
+          }
+        }
+
+        // Always pack the normal WAD too
+        const wadData = packWAD(certChain, ticketBytes, tmdBytes, contentBuffers);
+        const dbTitle = lookupTitle(tid);
+        const filename = generateWadFilename(tid, tmd.titleVersion, dbTitle?.name, wadNameTemplate);
         downloadBlob(wadData, filename);
         log(`WAD packed and saved: ${filename} (${formatSize(wadData.length)})`, 'success');
       }
 
-      // ── Step 5: Save individual files if requested ──
+      // ── Step 5: Save encrypted files as ZIP ──
       if (keepEncrypted) {
-        log('Saving encrypted contents...');
+        log('Bundling encrypted contents into ZIP...');
+        const zipFiles = [];
+        zipFiles.push({ name: 'tmd', data: new Uint8Array(tmdData) });
+        if (ticketData) zipFiles.push({ name: 'cetk', data: new Uint8Array(ticketData) });
         for (let i = 0; i < tmd.contents.length; i++) {
-          downloadBlob(contentBuffers[i], tmd.contents[i].idHex);
+          zipFiles.push({ name: tmd.contents[i].idHex, data: contentBuffers[i] });
         }
-        // Save TMD and ticket too
-        downloadBlob(new Uint8Array(tmdData), 'tmd');
-        if (ticketData) downloadBlob(new Uint8Array(ticketData), 'cetk');
-        log('Encrypted files saved.', 'success');
+        const folder = `${tid.toUpperCase()}_v${tmd.titleVersion}/`;
+        const zipData = createZip(zipFiles, folder);
+        downloadBlob(zipData, `${tid.toUpperCase()}-v${tmd.titleVersion}-encrypted.zip`);
+        log('Encrypted files saved as ZIP.', 'success');
       }
 
-      // ── Step 6: Decrypt contents if requested ──
+      // ── Step 6: Decrypt contents ──
       if (decryptContents && ticket && commonKeyHex.trim()) {
         log('Decrypting contents...');
         try {
@@ -213,6 +332,7 @@ export default function App() {
           );
           log('  Title key decrypted successfully');
 
+          const decryptedFiles = [];
           for (let i = 0; i < tmd.contents.length; i++) {
             const content = tmd.contents[i];
             log(`  Decrypting ${content.idHex}...`);
@@ -231,24 +351,31 @@ export default function App() {
             );
 
             if (verification.valid) {
-              log(`  ✓ ${content.idHex}.app verified (SHA-1 match)`, 'success');
+              log(`  ${content.idHex}.app verified (SHA-1 match)`, 'success');
             } else {
-              log(`  ✗ ${content.idHex}.app hash mismatch!`, 'warning');
+              log(`  ${content.idHex}.app hash mismatch!`, 'warning');
               log(`    Expected: ${verification.expected}`);
               log(`    Got:      ${verification.hash}`);
             }
 
-            downloadBlob(decrypted, `${content.idHex}.app`);
+            decryptedFiles.push({
+              name: `${content.idHex}.app`,
+              data: decrypted.slice(0, Number(content.size)),
+            });
           }
 
-          log('Decrypted contents saved.', 'success');
+          // Bundle decrypted files into ZIP
+          const folder = `${tid.toUpperCase()}_v${tmd.titleVersion}_decrypted/`;
+          const zipData = createZip(decryptedFiles, folder);
+          downloadBlob(zipData, `${tid.toUpperCase()}-v${tmd.titleVersion}-decrypted.zip`);
+          log('Decrypted contents saved as ZIP.', 'success');
         } catch (err) {
           log(`Decryption failed: ${err.message}`, 'error');
         }
       }
 
       setProgress(null);
-      log('═══ Download complete! ═══', 'success');
+      log('Download complete!', 'success');
 
     } catch (err) {
       log(`Error: ${err.message}`, 'error');
@@ -259,8 +386,145 @@ export default function App() {
     }
   };
 
+  // ─── Batch Download Handler ─────────────────
+  const handleLoadScript = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.nus,.txt';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const entries = parseNUSScript(text);
+      if (entries.length === 0) {
+        log('No valid entries found in script file.', 'error');
+        return;
+      }
+      setBatchQueue(entries);
+      log(`Loaded ${entries.length} title(s) from ${file.name}`, 'success');
+    };
+    input.click();
+  };
+
+  const handleBatchDownload = async () => {
+    if (batchQueue.length === 0) return;
+    setIsDownloading(true);
+    setLogs([]);
+
+    const client = new NUSClient(proxyUrl);
+    client.useWiiU = useWiiUCDN;
+    client.platform = platform;
+
+    const onRetry = (attempt, max, delay) => {
+      log(`  Retry ${attempt}/${max} in ${delay}ms...`, 'warning');
+    };
+
+    let completed = 0;
+    let failed = 0;
+
+    for (let qi = 0; qi < batchQueue.length; qi++) {
+      const entry = batchQueue[qi];
+      setBatchProgress({ current: qi + 1, total: batchQueue.length });
+      log(`\n[${ qi + 1}/${batchQueue.length}] Downloading ${entry.titleId.toUpperCase()} v${entry.version}...`);
+
+      try {
+        const tmdData = await client.downloadTMD(entry.titleId, entry.version, onRetry);
+        const tmd = new TMD(tmdData);
+        log(`  TMD: ${tmd.numContents} content(s), ${formatSize(Number(tmd.totalSize))}`);
+
+        let ticketData = null;
+        try {
+          ticketData = await client.downloadTicket(entry.titleId, onRetry);
+        } catch (err) {
+          if (err.status === 404) {
+            log('  No ticket available', 'warning');
+          } else throw err;
+        }
+
+        const contentBuffers = [];
+        for (let i = 0; i < tmd.contents.length; i++) {
+          const content = tmd.contents[i];
+          const data = await client.downloadContent(entry.titleId, content.idHex, null, onRetry);
+          contentBuffers.push(new Uint8Array(data));
+        }
+
+        if (packWad && ticketData) {
+          const tmdBytes = new Uint8Array(tmdData);
+          const ticketBytes = new Uint8Array(ticketData);
+          const certs = extractCertsFromTMD(tmdBytes, tmd.numContents) || new Uint8Array(0);
+          const wadData = packWAD(certs, ticketBytes, tmdBytes, contentBuffers);
+          const dbTitle = lookupTitle(entry.titleId);
+          const filename = generateWadFilename(entry.titleId, tmd.titleVersion, dbTitle?.name);
+          downloadBlob(wadData, filename);
+          log(`  WAD saved: ${filename}`, 'success');
+        }
+
+        completed++;
+      } catch (err) {
+        log(`  FAILED: ${err.message}`, 'error');
+        failed++;
+      }
+    }
+
+    setBatchProgress(null);
+    log(`\nBatch complete: ${completed} succeeded, ${failed} failed.`, completed > 0 ? 'success' : 'error');
+    setIsDownloading(false);
+  };
+
+  // ─── WAD Unpack Handler ─────────────────────
+  const handleUnpackWAD = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.wad';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const buffer = await file.arrayBuffer();
+        const result = unpackWAD(new Uint8Array(buffer));
+        const tmd = new TMD(result.tmd.buffer.slice(result.tmd.byteOffset, result.tmd.byteOffset + result.tmd.byteLength));
+        setWadUnpackResult({
+          ...result,
+          filename: file.name,
+          tmdParsed: tmd,
+        });
+        log(`WAD unpacked: ${file.name}`, 'success');
+        log(`  Title ID: ${tmd.titleId.toUpperCase()}`);
+        log(`  Version: v${tmd.titleVersion}`);
+        log(`  Contents: ${result.contents.length}`);
+      } catch (err) {
+        log(`Failed to unpack WAD: ${err.message}`, 'error');
+      }
+    };
+    input.click();
+  };
+
+  const handleExportWADComponent = (data, filename) => {
+    downloadBlob(data, filename);
+    log(`Exported: ${filename}`, 'success');
+  };
+
+  const handleExportAllWAD = () => {
+    if (!wadUnpackResult) return;
+    const files = [
+      { name: 'cert', data: wadUnpackResult.certChain },
+      { name: 'cetk', data: wadUnpackResult.ticket },
+      { name: 'tmd', data: wadUnpackResult.tmd },
+      ...wadUnpackResult.contents.map(c => ({ name: c.idHex, data: c.data })),
+    ];
+    if (wadUnpackResult.footer) files.push({ name: 'footer', data: wadUnpackResult.footer });
+
+    const tid = wadUnpackResult.tmdParsed.titleId.toUpperCase();
+    const ver = wadUnpackResult.tmdParsed.titleVersion;
+    const zipData = createZip(files, `${tid}_v${ver}/`);
+    downloadBlob(zipData, `${tid}-v${ver}-unpacked.zip`);
+    log('All components exported as ZIP.', 'success');
+  };
+
   // ─── Render ─────────────────────────────────
   const filteredTitles = searchTitles(dbSearch, dbCategory);
+  const showIOS = isIOSTitle(titleId);
+  const activeCategories = getActiveCategories();
 
   return (
     <div style={styles.root}>
@@ -268,7 +532,7 @@ export default function App() {
       <header style={styles.header}>
         <div style={styles.headerInner}>
           <div style={styles.logoArea}>
-            <div style={styles.logoIcon}>⬡</div>
+            <div style={styles.logoIcon}>&#x2B21;</div>
             <div>
               <h1 style={styles.title}>Web NUS Downloader</h1>
               <p style={styles.subtitle}>Browser-based Nintendo Update Server client</p>
@@ -288,107 +552,320 @@ export default function App() {
         </div>
       </header>
 
+      {/* ── Mode Tabs ── */}
+      <div style={styles.tabBar}>
+        <div style={styles.tabBarInner}>
+          {[
+            { id: 'download', label: 'Download' },
+            { id: 'batch', label: 'Batch Download' },
+            { id: 'wadtools', label: 'WAD Tools' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              style={{
+                ...styles.tab,
+                ...(mode === tab.id ? styles.tabActive : {}),
+              }}
+              onClick={() => setMode(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <main style={styles.main}>
         {/* ── Left Panel: Controls ── */}
         <section style={styles.panel}>
-          <h2 style={styles.panelTitle}>Title Configuration</h2>
+          {mode === 'download' && (
+            <>
+              <h2 style={styles.panelTitle}>Title Configuration</h2>
 
-          {/* Title ID Input */}
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Title ID</label>
-            <div style={styles.inputRow}>
-              <input
-                style={styles.input}
-                type="text"
-                placeholder="0000000100000002"
-                maxLength={16}
-                value={titleId}
-                onChange={e => setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, ''))}
-                disabled={isDownloading}
-              />
+              {/* Platform */}
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Platform</label>
+                <div style={styles.toggleGroup}>
+                  <button
+                    style={{ ...styles.toggleBtn, ...(platform === 'wii' ? styles.toggleActive : {}) }}
+                    onClick={() => setPlatform('wii')}
+                    disabled={isDownloading}
+                  >Wii</button>
+                  <button
+                    style={{ ...styles.toggleBtn, ...(platform === 'dsi' ? styles.toggleActive : {}) }}
+                    onClick={() => setPlatform('dsi')}
+                    disabled={isDownloading}
+                  >DSi</button>
+                </div>
+              </div>
+
+              {/* Title ID */}
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Title ID</label>
+                <div style={styles.inputRow}>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    placeholder="0000000100000002"
+                    maxLength={16}
+                    value={titleId}
+                    onChange={e => setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, ''))}
+                    disabled={isDownloading}
+                  />
+                  <button
+                    style={styles.btnSecondary}
+                    onClick={() => setShowDatabase(!showDatabase)}
+                    disabled={isDownloading}
+                  >
+                    Database
+                  </button>
+                </div>
+                {titleId.length > 0 && titleId.length < 16 && (
+                  <span style={styles.hint}>{16 - titleId.length} more characters needed</span>
+                )}
+              </div>
+
+              {/* Danger Warning */}
+              {dangerWarning && (
+                <div style={styles.dangerBanner}>
+                  <strong>Warning:</strong> {dangerWarning}
+                </div>
+              )}
+
+              {/* Version */}
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Version <span style={styles.optional}>(blank = latest)</span></label>
+                <input
+                  style={{ ...styles.input, width: 120 }}
+                  type="text"
+                  placeholder="Latest"
+                  value={version}
+                  onChange={e => setVersion(e.target.value.replace(/[^0-9]/g, ''))}
+                  disabled={isDownloading}
+                />
+              </div>
+
+              {/* Options */}
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Options</label>
+                <div style={styles.checkboxGroup}>
+                  <Checkbox checked={packWad} onChange={setPackWad} label="Pack WAD" disabled={isDownloading} />
+                  <Checkbox checked={keepEncrypted} onChange={setKeepEncrypted} label="Keep encrypted contents (ZIP)" disabled={isDownloading} />
+                  <Checkbox checked={decryptContents} onChange={setDecryptContents} label="Create decrypted contents (.app)" disabled={isDownloading} />
+                  {platform === 'wii' && (
+                    <Checkbox checked={useWiiUCDN} onChange={setUseWiiUCDN} label="Use Wii U CDN" disabled={isDownloading} />
+                  )}
+                </div>
+              </div>
+
+              {/* IOS Patching */}
+              {showIOS && (
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>IOS Patching</label>
+                  <div style={styles.checkboxGroup}>
+                    <Checkbox checked={patchTrucha} onChange={setPatchTrucha} label={PATCHES.trucha.name} disabled={isDownloading} />
+                    <Checkbox checked={patchESIdentify} onChange={setPatchESIdentify} label={PATCHES.esIdentify.name} disabled={isDownloading} />
+                    <Checkbox checked={patchNAND} onChange={setPatchNAND} label={PATCHES.nandPermissions.name} disabled={isDownloading} />
+                  </div>
+                  <span style={styles.hint}>Requires common key for patching</span>
+                </div>
+              )}
+
+              {/* WAD Naming */}
+              {packWad && (
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>WAD Name <span style={styles.optional}>(blank = auto)</span></label>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    placeholder="[name]-[v] or custom"
+                    value={wadNameTemplate}
+                    onChange={e => setWadNameTemplate(e.target.value)}
+                    disabled={isDownloading}
+                  />
+                  <span style={styles.hint}>Placeholders: [v] = version, [tid] = title ID, [name] = title name</span>
+                </div>
+              )}
+
+              {/* Common Key */}
+              {(decryptContents || patchTrucha || patchESIdentify || patchNAND) && (
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>
+                    Common Key
+                    {commonKeyNeeded !== null && (
+                      <span style={{ color: COLORS.accent, marginLeft: 8 }}>
+                        ({COMMON_KEY_NAMES[commonKeyNeeded] || 'Unknown'} needed)
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    style={styles.input}
+                    type="password"
+                    placeholder="32 hex characters"
+                    value={commonKeyHex}
+                    onChange={e => setCommonKeyHex(e.target.value)}
+                    disabled={isDownloading}
+                  />
+                  <span style={styles.hint}>
+                    {platform === 'dsi'
+                      ? 'Extract DSi common key from your DSi console.'
+                      : 'Extract from your own Wii console. Not included for legal reasons.'}
+                  </span>
+                </div>
+              )}
+
+              {/* Proxy URL */}
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Proxy Server</label>
+                <input
+                  style={styles.input}
+                  type="text"
+                  value={proxyUrl}
+                  onChange={e => setProxyUrl(e.target.value)}
+                  disabled={isDownloading}
+                />
+              </div>
+
+              {/* Download Button */}
               <button
-                style={styles.btnSecondary}
-                onClick={() => setShowDatabase(!showDatabase)}
-                disabled={isDownloading}
+                style={{
+                  ...styles.btnPrimary,
+                  opacity: isDownloading || proxyStatus !== 'ok' ? 0.5 : 1,
+                }}
+                onClick={handleDownload}
+                disabled={isDownloading || proxyStatus !== 'ok'}
               >
-                📋 Database
+                {isDownloading ? 'Downloading...' : 'Start NUS Download'}
               </button>
-            </div>
-            {titleId.length > 0 && titleId.length < 16 && (
-              <span style={styles.hint}>{16 - titleId.length} more characters needed</span>
-            )}
-          </div>
 
-          {/* Version */}
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Version <span style={styles.optional}>(blank = latest)</span></label>
-            <input
-              style={{ ...styles.input, width: 120 }}
-              type="text"
-              placeholder="Latest"
-              value={version}
-              onChange={e => setVersion(e.target.value.replace(/[^0-9]/g, ''))}
-              disabled={isDownloading}
-            />
-          </div>
-
-          {/* Options */}
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Options</label>
-            <div style={styles.checkboxGroup}>
-              <Checkbox checked={packWad} onChange={setPackWad} label="Pack WAD" disabled={isDownloading} />
-              <Checkbox checked={keepEncrypted} onChange={setKeepEncrypted} label="Keep encrypted contents" disabled={isDownloading} />
-              <Checkbox checked={decryptContents} onChange={setDecryptContents} label="Create decrypted contents (.app)" disabled={isDownloading} />
-              <Checkbox checked={useWiiUCDN} onChange={setUseWiiUCDN} label="Use Wii U CDN" disabled={isDownloading} />
-            </div>
-          </div>
-
-          {/* Common Key (only when decrypt is on) */}
-          {decryptContents && (
-            <div style={styles.fieldGroup}>
-              <label style={styles.label}>Common Key <span style={styles.optional}>(32 hex chars)</span></label>
-              <input
-                style={styles.input}
-                type="password"
-                placeholder="Enter your Wii common key..."
-                value={commonKeyHex}
-                onChange={e => setCommonKeyHex(e.target.value)}
-                disabled={isDownloading}
-              />
-              <span style={styles.hint}>
-                Extract from your own Wii console. Not included for legal reasons.
-              </span>
-            </div>
+              {proxyStatus === 'error' && (
+                <div style={styles.errorBanner}>
+                  Proxy server is not reachable. Make sure the server is running at {proxyUrl}
+                </div>
+              )}
+            </>
           )}
 
-          {/* Proxy URL */}
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Proxy Server</label>
-            <input
-              style={styles.input}
-              type="text"
-              value={proxyUrl}
-              onChange={e => setProxyUrl(e.target.value)}
-              disabled={isDownloading}
-            />
-          </div>
+          {mode === 'batch' && (
+            <>
+              <h2 style={styles.panelTitle}>Batch Download</h2>
 
-          {/* Download Button */}
-          <button
-            style={{
-              ...styles.btnPrimary,
-              opacity: isDownloading || proxyStatus !== 'ok' ? 0.5 : 1,
-            }}
-            onClick={handleDownload}
-            disabled={isDownloading || proxyStatus !== 'ok'}
-          >
-            {isDownloading ? '⏳ Downloading...' : '⬇ Start NUS Download'}
-          </button>
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Platform</label>
+                <div style={styles.toggleGroup}>
+                  <button style={{ ...styles.toggleBtn, ...(platform === 'wii' ? styles.toggleActive : {}) }}
+                    onClick={() => setPlatform('wii')} disabled={isDownloading}>Wii</button>
+                  <button style={{ ...styles.toggleBtn, ...(platform === 'dsi' ? styles.toggleActive : {}) }}
+                    onClick={() => setPlatform('dsi')} disabled={isDownloading}>DSi</button>
+                </div>
+              </div>
 
-          {proxyStatus === 'error' && (
-            <div style={styles.errorBanner}>
-              Proxy server is not reachable. Make sure the server is running at {proxyUrl}
-            </div>
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>NUS Script File</label>
+                <button style={styles.btnSecondary} onClick={handleLoadScript} disabled={isDownloading}>
+                  Load .nus Script
+                </button>
+                <span style={styles.hint}>
+                  Format: one title per line — "titleID versionHex"
+                </span>
+              </div>
+
+              {batchQueue.length > 0 && (
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Queue ({batchQueue.length} titles)</label>
+                  <div style={styles.batchList}>
+                    {batchQueue.map((entry, i) => (
+                      <div key={i} style={styles.batchItem}>
+                        <span style={{ color: COLORS.accent }}>{entry.titleId}</span>
+                        <span style={{ color: COLORS.textDim }}>v{entry.version}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={styles.checkboxGroup}>
+                <Checkbox checked={packWad} onChange={setPackWad} label="Pack WAD" disabled={isDownloading} />
+                {platform === 'wii' && (
+                  <Checkbox checked={useWiiUCDN} onChange={setUseWiiUCDN} label="Use Wii U CDN" disabled={isDownloading} />
+                )}
+              </div>
+
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Proxy Server</label>
+                <input style={styles.input} type="text" value={proxyUrl}
+                  onChange={e => setProxyUrl(e.target.value)} disabled={isDownloading} />
+              </div>
+
+              <button
+                style={{
+                  ...styles.btnPrimary,
+                  opacity: isDownloading || batchQueue.length === 0 || proxyStatus !== 'ok' ? 0.5 : 1,
+                }}
+                onClick={handleBatchDownload}
+                disabled={isDownloading || batchQueue.length === 0 || proxyStatus !== 'ok'}
+              >
+                {isDownloading ? 'Downloading...' : `Download ${batchQueue.length} Title(s)`}
+              </button>
+
+              {batchProgress && (
+                <div style={styles.progressArea}>
+                  <div style={styles.progressLabel}>
+                    Title {batchProgress.current}/{batchProgress.total}
+                  </div>
+                  <div style={styles.progressBar}>
+                    <div style={{
+                      ...styles.progressFill,
+                      width: `${(batchProgress.current / batchProgress.total) * 100}%`,
+                    }} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {mode === 'wadtools' && (
+            <>
+              <h2 style={styles.panelTitle}>WAD Tools</h2>
+
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>Unpack WAD</label>
+                <button style={styles.btnSecondary} onClick={handleUnpackWAD}>
+                  Select WAD File
+                </button>
+                <span style={styles.hint}>Extract cert chain, ticket, TMD, and contents from a WAD file.</span>
+              </div>
+
+              {wadUnpackResult && (
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Unpacked: {wadUnpackResult.filename}</label>
+
+                  <div style={styles.infoCard}>
+                    <InfoRow label="Title ID" value={wadUnpackResult.tmdParsed.titleId.toUpperCase()} />
+                    <InfoRow label="Version" value={`v${wadUnpackResult.tmdParsed.titleVersion}`} />
+                    <InfoRow label="Contents" value={String(wadUnpackResult.contents.length)} />
+                    <InfoRow label="Cert Chain" value={formatSize(wadUnpackResult.certChain.length)} />
+                    <InfoRow label="Ticket" value={formatSize(wadUnpackResult.ticket.length)} />
+                    <InfoRow label="TMD" value={formatSize(wadUnpackResult.tmd.length)} />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                    <button style={styles.btnSmall} onClick={() => handleExportWADComponent(wadUnpackResult.certChain, 'cert')}>Export Certificate Chain</button>
+                    <button style={styles.btnSmall} onClick={() => handleExportWADComponent(wadUnpackResult.ticket, 'cetk')}>Export Ticket</button>
+                    <button style={styles.btnSmall} onClick={() => handleExportWADComponent(wadUnpackResult.tmd, 'tmd')}>Export TMD</button>
+                    {wadUnpackResult.contents.map((c, i) => (
+                      <button key={i} style={styles.btnSmall}
+                        onClick={() => handleExportWADComponent(c.data, c.idHex)}>
+                        Export Content {c.idHex} ({formatSize(c.size)})
+                      </button>
+                    ))}
+                    <button style={{ ...styles.btnSmall, color: COLORS.accent, borderColor: COLORS.accent }}
+                      onClick={handleExportAllWAD}>
+                      Export All as ZIP
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </section>
 
@@ -403,7 +880,7 @@ export default function App() {
                 <InfoRow label="Version" value={`v${tmdInfo.version}`} />
                 <InfoRow label="Type" value={tmdInfo.type} />
                 <InfoRow label="Contents" value={String(tmdInfo.numContents)} />
-                <InfoRow label="Required IOS" value={tmdInfo.iosVersion} />
+                {platform !== 'dsi' && <InfoRow label="Required IOS" value={tmdInfo.iosVersion} />}
                 <InfoRow label="Total Size" value={formatSize(Number(tmdInfo.totalSize))} />
               </div>
             </div>
@@ -414,14 +891,15 @@ export default function App() {
             <div style={styles.progressArea}>
               <div style={styles.progressLabel}>
                 {progress.label} ({progress.current}/{progress.total})
+                {progress.pct > 0 && ` — ${progress.pct}%`}
               </div>
               <div style={styles.progressBar}>
-                <div
-                  style={{
-                    ...styles.progressFill,
-                    width: `${(progress.current / progress.total) * 100}%`,
-                  }}
-                />
+                <div style={{
+                  ...styles.progressFill,
+                  width: progress.pct > 0
+                    ? `${progress.pct}%`
+                    : `${(progress.current / progress.total) * 100}%`,
+                }} />
               </div>
             </div>
           )}
@@ -465,7 +943,12 @@ export default function App() {
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h2 style={styles.modalTitle}>Title Database</h2>
-              <button style={styles.btnClose} onClick={() => setShowDatabase(false)}>✕</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button style={styles.btnSmall} onClick={handleImportDB}>
+                  Import XML
+                </button>
+                <button style={styles.btnClose} onClick={() => setShowDatabase(false)}>&#x2715;</button>
+              </div>
             </div>
 
             <div style={styles.modalFilters}>
@@ -483,7 +966,7 @@ export default function App() {
                 onChange={e => setDbCategory(e.target.value)}
               >
                 <option value="">All Categories</option>
-                {Object.values(CATEGORIES).map(cat => (
+                {activeCategories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
@@ -493,10 +976,17 @@ export default function App() {
               {filteredTitles.map((title, i) => (
                 <div
                   key={i}
-                  style={styles.dbRow}
+                  style={{
+                    ...styles.dbRow,
+                    ...(title.danger ? { borderLeft: `3px solid ${COLORS.danger}` } : {}),
+                  }}
                   onClick={() => selectTitle(title)}
                 >
-                  <div style={styles.dbRowName}>{title.name}</div>
+                  <div style={styles.dbRowName}>
+                    {title.name}
+                    {title.danger && <span style={styles.dangerTag}>CAUTION</span>}
+                    {title.hasTicket === false && <span style={styles.noTicketTag}>No Ticket</span>}
+                  </div>
                   <div style={styles.dbRowMeta}>
                     <span style={styles.dbRowTid}>{title.titleId}</span>
                     <span style={styles.dbRowRegion}>{title.region}</span>
@@ -510,6 +1000,10 @@ export default function App() {
               {filteredTitles.length === 0 && (
                 <div style={styles.logEmpty}>No titles match your search.</div>
               )}
+            </div>
+
+            <div style={styles.modalFooter}>
+              {TITLE_DATABASE.length} titles loaded
             </div>
           </div>
         </div>
@@ -544,7 +1038,7 @@ function Checkbox({ checked, onChange, label, disabled }) {
         backgroundColor: checked ? COLORS.accent : 'transparent',
         borderColor: checked ? COLORS.accent : COLORS.textDim,
       }}>
-        {checked && '✓'}
+        {checked && '\u2713'}
       </span>
       {label}
     </label>
@@ -641,6 +1135,36 @@ const styles = {
     fontSize: 12,
     color: COLORS.textDim,
   },
+  // Tab bar
+  tabBar: {
+    borderBottom: `1px solid ${COLORS.border}`,
+    background: COLORS.surface,
+    padding: '0 24px',
+  },
+  tabBarInner: {
+    maxWidth: 1200,
+    margin: '0 auto',
+    display: 'flex',
+    gap: 0,
+  },
+  tab: {
+    background: 'transparent',
+    color: COLORS.textDim,
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    padding: '12px 20px',
+    fontFamily: 'inherit',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    transition: 'all 0.15s',
+  },
+  tabActive: {
+    color: COLORS.accent,
+    borderBottomColor: COLORS.accent,
+  },
   main: {
     maxWidth: 1200,
     margin: '0 auto',
@@ -731,6 +1255,28 @@ const styles = {
     color: COLORS.textDim,
     opacity: 0.7,
   },
+  // Toggle buttons
+  toggleGroup: {
+    display: 'flex',
+    gap: 0,
+  },
+  toggleBtn: {
+    background: COLORS.bg,
+    color: COLORS.textDim,
+    border: `1px solid ${COLORS.border}`,
+    padding: '6px 16px',
+    fontFamily: 'inherit',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  toggleActive: {
+    background: COLORS.accentDim,
+    color: COLORS.text,
+    borderColor: COLORS.accent,
+  },
+  // Checkboxes
   checkboxGroup: {
     display: 'flex',
     flexDirection: 'column',
@@ -758,6 +1304,7 @@ const styles = {
     flexShrink: 0,
     transition: 'all 0.15s',
   },
+  // Buttons
   btnPrimary: {
     background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accentDim})`,
     color: COLORS.bg,
@@ -795,6 +1342,7 @@ const styles = {
     fontSize: 11,
     cursor: 'pointer',
     alignSelf: 'flex-start',
+    textAlign: 'left',
   },
   btnClose: {
     background: 'transparent',
@@ -804,6 +1352,7 @@ const styles = {
     cursor: 'pointer',
     padding: '4px 8px',
   },
+  // Banners
   errorBanner: {
     background: 'rgba(255, 64, 96, 0.1)',
     border: `1px solid ${COLORS.error}`,
@@ -812,6 +1361,14 @@ const styles = {
     fontSize: 12,
     color: COLORS.error,
     marginTop: 4,
+  },
+  dangerBanner: {
+    background: COLORS.dangerBg,
+    border: `1px solid ${COLORS.danger}`,
+    borderRadius: 4,
+    padding: '8px 12px',
+    fontSize: 12,
+    color: COLORS.danger,
   },
   // Log
   logBox: {
@@ -943,6 +1500,13 @@ const styles = {
     flex: 1,
     padding: '8px 0',
   },
+  modalFooter: {
+    padding: '8px 18px',
+    borderTop: `1px solid ${COLORS.border}`,
+    fontSize: 11,
+    color: COLORS.textDim,
+    textAlign: 'center',
+  },
   dbRow: {
     padding: '10px 18px',
     cursor: 'pointer',
@@ -954,6 +1518,9 @@ const styles = {
     fontWeight: 600,
     color: COLORS.text,
     marginBottom: 2,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
   },
   dbRowMeta: {
     display: 'flex',
@@ -975,6 +1542,43 @@ const styles = {
     fontSize: 11,
     color: COLORS.textDim,
     opacity: 0.7,
+  },
+  dangerTag: {
+    fontSize: 9,
+    fontWeight: 700,
+    color: COLORS.danger,
+    background: COLORS.dangerBg,
+    padding: '1px 5px',
+    borderRadius: 3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  noTicketTag: {
+    fontSize: 9,
+    fontWeight: 700,
+    color: COLORS.warning,
+    background: 'rgba(255, 176, 32, 0.1)',
+    padding: '1px 5px',
+    borderRadius: 3,
+    textTransform: 'uppercase',
+  },
+  // Batch list
+  batchList: {
+    background: COLORS.bg,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 4,
+    padding: 8,
+    maxHeight: 200,
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  batchItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: 12,
+    padding: '2px 4px',
   },
   // Footer
   footer: {

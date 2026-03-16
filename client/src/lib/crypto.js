@@ -1,24 +1,77 @@
 /**
- * Wii Crypto Operations
+ * Wii/DSi Crypto Operations
  *
  * Uses the Web Crypto API for AES-128-CBC operations.
  *
- * Key derivation for Wii content:
+ * Key derivation:
  *   1. The ticket contains an encrypted title key (16 bytes)
- *   2. The title key is encrypted with the Wii Common Key using AES-128-CBC
+ *   2. The title key is encrypted with a common key using AES-128-CBC
+ *      - Wii Common Key (index 0)
+ *      - Korean Key (index 1)
+ *      - vWii Key (index 2)
+ *      - DSi Key (for DSi titles)
  *   3. The IV for decrypting the title key is the title ID (8 bytes) + 8 zero bytes
- *   4. Once decrypted, the title key is used to decrypt individual contents
+ *   4. Once decrypted, the title key decrypts individual contents
  *   5. Each content's IV is the content index (2 bytes) + 14 zero bytes
  *
- * NOTE: The Wii Common Key is NOT embedded here for legal reasons.
- * Users must provide their own key file (from their own Wii console).
+ * NOTE: Common keys are NOT embedded here for legal reasons.
  */
+
+/**
+ * AES-128-CBC decryption without PKCS7 padding.
+ *
+ * Web Crypto API always expects PKCS7 padding on AES-CBC. Nintendo doesn't
+ * use PKCS7 padding. We work around this by appending a synthetic ciphertext
+ * block that decrypts to valid PKCS7 padding (0x10 * 16), then discarding it.
+ *
+ * How it works:
+ *   1. Encrypt a block of 0x10 bytes using the last ciphertext block as IV
+ *   2. Append the result as a final ciphertext block
+ *   3. When Web Crypto decrypts, the last block yields valid PKCS7 → stripped
+ *   4. The remaining output is the exact plaintext with no padding artifacts
+ */
+async function decryptNoPadding(ciphertext, keyData, iv) {
+  const key = await crypto.subtle.importKey(
+    'raw', keyData, { name: 'AES-CBC' }, false, ['encrypt', 'decrypt']
+  );
+
+  let data = ciphertext instanceof Uint8Array ? ciphertext : new Uint8Array(ciphertext);
+  if (data.length === 0) return new Uint8Array(0);
+
+  // Pad to AES block boundary if needed
+  if (data.length % 16 !== 0) {
+    const aligned = new Uint8Array(Math.ceil(data.length / 16) * 16);
+    aligned.set(data);
+    data = aligned;
+  }
+
+  // Create synthetic ciphertext block that decrypts to valid PKCS7
+  const lastBlock = data.slice(data.length - 16);
+  const paddingPlain = new Uint8Array(16).fill(0x10);
+  const encResult = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: lastBlock }, key, paddingPlain
+  );
+  // encrypt() adds its own PKCS7 → 32 bytes; take first 16 as our synthetic block
+  const syntheticBlock = new Uint8Array(encResult, 0, 16);
+
+  // Append synthetic block to ciphertext
+  const extended = new Uint8Array(data.length + 16);
+  extended.set(data);
+  extended.set(syntheticBlock, data.length);
+
+  // Decrypt — Web Crypto strips the synthetic PKCS7, returning exact plaintext
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-CBC', iv }, key, extended
+  );
+
+  return new Uint8Array(decrypted);
+}
 
 /**
  * Decrypt the title key from a ticket using the common key.
  *
  * @param {Uint8Array} encryptedTitleKey - 16-byte encrypted title key from ticket
- * @param {Uint8Array} commonKey         - 16-byte Wii common key
+ * @param {Uint8Array} commonKey         - 16-byte common key (Wii/Korean/DSi)
  * @param {string} titleId              - 16-char hex title ID
  * @returns {Promise<Uint8Array>} Decrypted title key (16 bytes)
  */
@@ -28,25 +81,7 @@ export async function decryptTitleKey(encryptedTitleKey, commonKey, titleId) {
   for (let i = 0; i < 8; i++) {
     iv[i] = parseInt(titleId.substr(i * 2, 2), 16);
   }
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    commonKey,
-    { name: 'AES-CBC' },
-    false,
-    ['decrypt']
-  );
-
-  const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-CBC', iv },
-    cryptoKey,
-    encryptedTitleKey
-  );
-
-  // AES-CBC with Web Crypto API applies PKCS7 padding removal automatically.
-  // The title key is exactly 16 bytes, but the output may be 16 bytes if
-  // no padding was applied (raw AES block). We take the first 16 bytes.
-  return new Uint8Array(decrypted).slice(0, 16);
+  return decryptNoPadding(encryptedTitleKey, commonKey, iv);
 }
 
 /**
@@ -62,71 +97,7 @@ export async function decryptContent(encryptedContent, titleKey, contentIndex) {
   const iv = new Uint8Array(16);
   iv[0] = (contentIndex >> 8) & 0xFF;
   iv[1] = contentIndex & 0xFF;
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    titleKey,
-    { name: 'AES-CBC' },
-    false,
-    ['decrypt']
-  );
-
-  // Content must be padded to 16-byte boundary for AES
-  let paddedContent = encryptedContent;
-  if (encryptedContent.length % 16 !== 0) {
-    paddedContent = new Uint8Array(
-      Math.ceil(encryptedContent.length / 16) * 16
-    );
-    paddedContent.set(encryptedContent);
-  }
-
-  try {
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-CBC', iv },
-      cryptoKey,
-      paddedContent
-    );
-    return new Uint8Array(decrypted);
-  } catch {
-    // Web Crypto's AES-CBC expects PKCS7 padding by default.
-    // Wii contents don't use PKCS7 padding, so we may need to
-    // manually perform CBC decryption for raw blocks.
-    return await decryptContentRaw(paddedContent, titleKey, iv);
-  }
-}
-
-/**
- * Raw AES-CBC decryption without PKCS7 padding removal.
- * Needed because Wii content doesn't use standard PKCS7 padding.
- *
- * We decrypt in ECB mode block-by-block and XOR with previous ciphertext
- * to simulate CBC without padding expectations.
- */
-async function decryptContentRaw(data, keyData, iv) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'AES-CBC' },
-    false,
-    ['decrypt']
-  );
-
-  // Add a dummy block at the end to satisfy PKCS7 expectations
-  const padded = new Uint8Array(data.length + 16);
-  padded.set(data);
-  // Fill last block with 0x10 (PKCS7 padding for a full block)
-  for (let i = data.length; i < padded.length; i++) {
-    padded[i] = 0x10;
-  }
-
-  const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-CBC', iv },
-    key,
-    padded
-  );
-
-  // Return only the original data length (remove dummy padding block)
-  return new Uint8Array(decrypted).slice(0, data.length);
+  return decryptNoPadding(encryptedContent, titleKey, iv);
 }
 
 /**
@@ -188,3 +159,11 @@ export function parseCommonKey(input) {
 
   throw new Error('Common key must be 32 hex chars or 16 raw bytes');
 }
+
+/** Common key type names for display */
+export const COMMON_KEY_NAMES = {
+  0: 'Wii Common Key',
+  1: 'Korean Key',
+  2: 'vWii Key',
+  dsi: 'DSi Key',
+};

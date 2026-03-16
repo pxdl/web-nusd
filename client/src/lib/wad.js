@@ -1,13 +1,13 @@
 /**
- * WAD Packer
+ * WAD Packer / Unpacker
  *
- * Creates installable WAD files from NUS components.
+ * Creates and extracts installable WAD files.
  *
  * WAD Structure (all big-endian):
  *   Header (0x20 bytes):
  *     0x00: u32 header_size    = 0x20
- *     0x02: u16 type           = 0x4973 ("Is") for installable
- *     0x04: u16 padding        = 0x0000
+ *     0x04: u16 type           = 0x4973 ("Is") for installable
+ *     0x06: u16 padding        = 0x0000
  *     0x08: u32 cert_chain_size
  *     0x0C: u32 reserved       = 0x00000000
  *     0x10: u32 ticket_size
@@ -15,12 +15,12 @@
  *     0x18: u32 data_size      (total encrypted content size with alignment)
  *     0x1C: u32 footer_size    = 0x00000000
  *
- *   Then sections in order, each aligned to 0x40 bytes:
+ *   Sections (each aligned to 0x40 bytes):
  *     1. Certificate chain
  *     2. Ticket
  *     3. TMD
- *     4. Encrypted content data (contents concatenated, each aligned to 0x40)
- *     5. Footer (optional, usually empty)
+ *     4. Encrypted content data (each content aligned to 0x40)
+ *     5. Footer (optional)
  *
  * Reference: https://wiibrew.org/wiki/WAD_files
  */
@@ -31,13 +31,6 @@ const ALIGNMENT = 0x40;
 function align(size) {
   const remainder = size % ALIGNMENT;
   return remainder === 0 ? size : size + (ALIGNMENT - remainder);
-}
-
-/** Create padding bytes to align a section */
-function createPadding(currentSize) {
-  const aligned = align(currentSize);
-  const padLen = aligned - currentSize;
-  return new Uint8Array(padLen);
 }
 
 /**
@@ -107,18 +100,86 @@ export function packWAD(certChain, ticket, tmd, contents) {
 }
 
 /**
- * Generate a default certificate chain.
- * In the original NUSD, certs are collected from NUS on first boot.
- * For our purposes, we can build one from the ticket and TMD cert chains.
+ * Unpack a WAD file into its components.
  *
- * The cert chain for a standard Wii WAD consists of:
- *   - CA certificate (signed by Root)
- *   - CP certificate (signs TMD, signed by CA)
- *   - XS certificate (signs Ticket, signed by CA)
- *
- * Since we download from NUS, the TMD and ticket already contain
- * their signing certificates appended. We can extract them.
+ * @param {Uint8Array|ArrayBuffer} wadData - Complete WAD file
+ * @returns {{
+ *   headerSize: number,
+ *   wadType: number,
+ *   certChain: Uint8Array,
+ *   ticket: Uint8Array,
+ *   tmd: Uint8Array,
+ *   contents: Array<{id: number, idHex: string, index: number, type: number, size: number, data: Uint8Array}>,
+ *   footer: Uint8Array|null,
+ * }}
  */
+export function unpackWAD(wadData) {
+  const data = wadData instanceof Uint8Array ? wadData : new Uint8Array(wadData);
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+  const headerSize = view.getUint32(0x00);
+  const wadType = view.getUint16(0x04);
+  const certChainSize = view.getUint32(0x08);
+  const ticketSize = view.getUint32(0x10);
+  const tmdSize = view.getUint32(0x14);
+  const dataSize = view.getUint32(0x18);
+  const footerSize = view.getUint32(0x1C);
+
+  let offset = align(headerSize);
+
+  const certChain = data.slice(offset, offset + certChainSize);
+  offset += align(certChainSize);
+
+  const ticket = data.slice(offset, offset + ticketSize);
+  offset += align(ticketSize);
+
+  const tmd = data.slice(offset, offset + tmdSize);
+  offset += align(tmdSize);
+
+  // Parse TMD to get content records
+  const tmdView = new DataView(tmd.buffer, tmd.byteOffset, tmd.byteLength);
+  const sigType = tmdView.getUint32(0);
+  let tmdHeaderOffset;
+  switch (sigType) {
+    case 0x00010000: tmdHeaderOffset = 4 + 512 + 60; break;
+    case 0x00010001: tmdHeaderOffset = 4 + 256 + 60; break;
+    case 0x00010002: tmdHeaderOffset = 4 + 60 + 64; break;
+    default: tmdHeaderOffset = 0x140;
+  }
+  const numContents = tmdView.getUint16(tmdHeaderOffset + 0x9E);
+
+  const contents = [];
+  for (let i = 0; i < numContents; i++) {
+    const recOffset = tmdHeaderOffset + 0xA4 + i * 0x24;
+    const contentId = tmdView.getUint32(recOffset);
+    const contentIndex = tmdView.getUint16(recOffset + 0x04);
+    const contentType = tmdView.getUint16(recOffset + 0x06);
+    const sizeHigh = tmdView.getUint32(recOffset + 0x08);
+    const sizeLow = tmdView.getUint32(recOffset + 0x0C);
+    const size = sizeHigh * 0x100000000 + sizeLow;
+
+    // Encrypted size is content size rounded up to AES block boundary
+    const encSize = Math.ceil(size / 16) * 16;
+    const contentData = data.slice(offset, offset + encSize);
+
+    contents.push({
+      id: contentId,
+      idHex: contentId.toString(16).padStart(8, '0'),
+      index: contentIndex,
+      type: contentType,
+      size,
+      data: contentData,
+    });
+    offset += align(encSize);
+  }
+
+  let footer = null;
+  if (footerSize > 0 && offset + footerSize <= data.length) {
+    footer = data.slice(offset, offset + footerSize);
+  }
+
+  return { headerSize, wadType, certChain, ticket, tmd, contents, footer };
+}
 
 /**
  * Extract certificates from raw TMD data.
@@ -129,8 +190,6 @@ export function packWAD(certChain, ticket, tmd, contents) {
  * @returns {Uint8Array|null} Certificate chain or null if not found
  */
 export function extractCertsFromTMD(tmdData, numContents) {
-  // TMD structure: sig(4) + sig_data(256) + pad(60) + header(0xA4) + contents(numContents * 0x24)
-  // = 0x140 + 0xA4 + numContents * 0x24
   const sigType = new DataView(tmdData.buffer, tmdData.byteOffset).getUint32(0);
 
   let headerSize;
@@ -152,39 +211,71 @@ export function extractCertsFromTMD(tmdData, numContents) {
 
 /**
  * Build a minimal cert chain from TMD and Ticket certificate data.
- * The standard WAD cert chain order is: CA, CP, XS
- * But many tools accept whatever order the certs come in.
  */
 export function buildCertChain(tmdCerts, ticketCerts) {
   if (tmdCerts && ticketCerts) {
-    // Concatenate — TMD certs typically have CA+CP, ticket has CA+XS
-    // We want CA + CP + XS. For simplicity, just concat unique certs.
     const combined = new Uint8Array(tmdCerts.length + ticketCerts.length);
     combined.set(tmdCerts, 0);
     combined.set(ticketCerts, tmdCerts.length);
     return combined;
   }
-
   return tmdCerts || ticketCerts || new Uint8Array(0);
 }
 
+// Official WAD naming patterns from the original NUSD
+const OFFICIAL_NAMES = {
+  '0000000100000002': 'RVL-WiiSystemmenu-[v]',
+  '0000000100000100': 'RVL-bc-[v]',
+  '0000000100000101': 'RVL-mios-[v]',
+};
+
 /**
- * Generate a WAD filename from title info.
+ * Generate a WAD filename.
  *
- * @param {string} titleId - 16-char hex title ID
- * @param {number} version - Title version number
- * @param {string} [name]  - Optional title name from database
+ * Supports template strings with placeholders:
+ *   [v]   → version number
+ *   [tid] → title ID (uppercase)
+ *
+ * Falls back to official naming patterns for known titles,
+ * then IOS naming, then generic naming.
+ *
+ * @param {string} titleId  - 16-char hex title ID
+ * @param {number} version  - Title version number
+ * @param {string} [name]   - Optional title name from database
+ * @param {string} [template] - Optional custom naming template
  * @returns {string} Suggested filename
  */
-export function generateWadFilename(titleId, version, name) {
-  const tidUpper = titleId.toUpperCase();
-  const vStr = `v${version}`;
+export function generateWadFilename(titleId, version, name, template) {
+  const tid = titleId.toLowerCase();
+  const vStr = String(version);
 
-  if (name) {
-    // Sanitize name for filesystem
-    const safeName = name.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
-    return `${safeName}-${tidUpper}-${vStr}.wad`;
+  // Use custom template if provided
+  if (template && template.trim()) {
+    return template
+      .replace(/\[v\]/g, vStr)
+      .replace(/\[tid\]/g, tid.toUpperCase())
+      .replace(/\[name\]/g, name || tid.toUpperCase())
+      + '.wad';
   }
 
-  return `${tidUpper}-${vStr}.wad`;
+  // Use official naming for known titles
+  if (OFFICIAL_NAMES[tid]) {
+    return OFFICIAL_NAMES[tid].replace('[v]', vStr) + '.wad';
+  }
+
+  // IOS titles: IOS{n}-64-v{version}.wad
+  if (tid.startsWith('00000001000000') && tid !== '0000000100000001' && tid !== '0000000100000002') {
+    const iosNum = parseInt(tid.slice(14), 16);
+    if (iosNum > 2 && iosNum < 256) {
+      return `IOS${iosNum}-64-v${vStr}.wad`;
+    }
+  }
+
+  // Named titles
+  if (name) {
+    const safeName = name.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+    return `${safeName}-${tid.toUpperCase()}-v${vStr}.wad`;
+  }
+
+  return `${tid.toUpperCase()}-v${vStr}.wad`;
 }
