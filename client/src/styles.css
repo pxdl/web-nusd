@@ -180,7 +180,16 @@ button:disabled {
   border-bottom: 1px solid var(--border-light) !important;
 }
 
-/* Wii disc slot glow — uguisu (bush warbler) breathing pattern */
+/* Wii disc slot glow — uguisu (bush warbler) breathing pattern.
+   Reverse-engineered from Nintendo's "Bush Warbler v1.1" firmware pattern.
+   The LED maps the bird's "ho-hokekyo" call to light:
+     Phase 1: "Ho~"      — bell-curve pulse (introductory whistle)
+     Phase 2: "-ho-"     — smaller secondary pulse
+     Phase 3: (breath)   — dim pause before main call
+     Phase 4: "ho~~ke~~" — slow crescendo + sustained hold
+     Phase 5: "-kyo!"    — rapid trill oscillation
+     Phase 6: (silence)  — fade + rest before next cycle
+   Total: ~9s cycle. Source: GlowWii / larsenv / RiiConnect24 */
 .nusd-header::after {
   content: '';
   position: absolute;
@@ -191,17 +200,35 @@ button:disabled {
   height: 2px;
   background: var(--accent);
   border-radius: 2px;
-  animation: uguisu 4.5s ease-in-out infinite;
-  box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 20px var(--accent-glow);
+  animation: uguisu 9s ease-in-out infinite;
 }
 
-/* Mimics the uguisu call: quick chirp up, brief hold, slow trail off, pause */
 @keyframes uguisu {
-  0%   { opacity: 0.08; box-shadow: 0 0 2px var(--accent-glow); }
-  10%  { opacity: 0.9;  box-shadow: 0 0 8px var(--accent-glow-strong), 0 0 24px var(--accent-glow); }
-  18%  { opacity: 1;    box-shadow: 0 0 10px var(--accent-glow-strong), 0 0 30px var(--accent-glow); }
-  50%  { opacity: 0.15; box-shadow: 0 0 3px var(--accent-glow); }
-  100% { opacity: 0.08; box-shadow: 0 0 2px var(--accent-glow); }
+  /* Phase 1: "Ho~" — introductory whistle pulse (0–5.3%) */
+  0%    { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+  2.6%  { opacity: 0.50; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  5.3%  { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+
+  /* Phase 2: "-ho-" — softer secondary pulse (5.3–8.4%) */
+  6.8%  { opacity: 0.32; box-shadow: 0 0 4px var(--accent-glow-strong), 0 0 10px var(--accent-glow); }
+  8.4%  { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+
+  /* Phase 3: (breath) — dim pause (8.4–21.7%) */
+  21.7% { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+
+  /* Phase 4: "ho~~ke~~" — slow crescendo + sustained hold (21.7–59.7%) */
+  35%   { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  59.7% { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+
+  /* Phase 5: "-kyo!" — rapid trill (59.7–64.1%) */
+  60.8% { opacity: 0.25; box-shadow: 0 0 3px var(--accent-glow); }
+  61.9% { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  63.0% { opacity: 0.25; box-shadow: 0 0 3px var(--accent-glow); }
+  64.1% { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+
+  /* Phase 6: fade + rest (64.1–100%) */
+  65.2% { opacity: 0.12; box-shadow: 0 0 2px var(--accent-glow); }
+  100%  { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
 }
 
 .nusd-logo-icon {
