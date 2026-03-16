@@ -738,7 +738,13 @@ export default function App() {
       <header className="nusd-header" style={styles.header}>
         <div style={styles.headerInner}>
           <div style={styles.logoArea}>
-            <div className="nusd-logo-icon" style={styles.logoIcon}>&#x2B21;</div>
+            <div className="nusd-logo-icon" style={styles.logoIcon}>
+              <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+                <circle cx="15" cy="15" r="14" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/>
+                <path d="M15 7v12M10 15l5 5.5L20 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="9" y1="24" x2="21" y2="24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+              </svg>
+            </div>
             <div>
               <h1 className="nusd-title" style={styles.title}>Web NUS Downloader</h1>
               <p style={styles.subtitle}>Browser-based Nintendo Update Server client</p>
@@ -1464,8 +1470,10 @@ const styles = {
     gap: 12,
   },
   logoIcon: {
-    fontSize: 32,
     color: COLORS.accent,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     margin: 0,
