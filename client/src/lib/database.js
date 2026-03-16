@@ -80,64 +80,66 @@ const XML_CATEGORY_MAP = {
  *   name, titleId, versions[], category, region, description,
  *   hasTicket (bool), danger (string|null)
  */
-const D = 'System title — modifying IOS can brick your Wii';
-const S = 'Installing the wrong System Menu version can brick your Wii!';
+// The built-in database is populated at startup from bundled NUSGet JSON files.
+// This initial set serves as a fallback if the import fails.
+const IOS_DANGER = 'System title — modifying IOS can brick your Wii';
+const SYSMENU_DANGER = 'Installing the wrong System Menu version can brick your Wii!';
 
 export let TITLE_DATABASE = [
   // ═══════════════════════════════════════════
   // IOS Titles (all known versions from NUSGet/WiiBrew)
   // ═══════════════════════════════════════════
-  { name: 'IOS4',  titleId: '0000000100000004', versions: [65280],                                                  category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS9',  titleId: '0000000100000009', versions: [520, 521, 778, 1034],                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS10', titleId: '000000010000000a', versions: [768],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS11', titleId: '000000010000000b', versions: [256],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS12', titleId: '000000010000000c', versions: [6, 11, 12, 269, 525, 526],                               category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS13', titleId: '000000010000000d', versions: [10, 15, 16, 273, 1031, 1032],                            category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS14', titleId: '000000010000000e', versions: [262, 263, 520, 1031, 1032],                              category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS15', titleId: '000000010000000f', versions: [257, 258, 259, 260, 265, 266, 523, 1031, 1032],          category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS16', titleId: '0000000100000010', versions: [512],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS17', titleId: '0000000100000011', versions: [517, 518, 775, 1032],                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS20', titleId: '0000000100000014', versions: [256],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS21', titleId: '0000000100000015', versions: [514, 515, 516, 517, 522, 525, 782, 1039],                category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: D },
-  { name: 'IOS22', titleId: '0000000100000016', versions: [780, 1037, 1294],                                        category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by Disc Channel',   hasTicket: true, danger: D },
-  { name: 'IOS28', titleId: '000000010000001c', versions: [1293, 1550, 1807],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by many games',     hasTicket: true, danger: D },
-  { name: 'IOS30', titleId: '000000010000001e', versions: [1037, 1039, 1040, 2576, 2816],                           category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS31', titleId: '000000010000001f', versions: [1037, 1039, 1040, 2576, 3088, 3092, 3349, 3607, 3608],   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS33', titleId: '0000000100000021', versions: [1040, 2832, 3088, 3092, 3349, 3607, 3608],               category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS34', titleId: '0000000100000022', versions: [1039, 3091, 3348, 3607, 3608],                           category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS35', titleId: '0000000100000023', versions: [1040, 3088, 3092, 3349, 3607, 3608],                     category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS36', titleId: '0000000100000024', versions: [1042, 3090, 3094, 3351, 3607, 3608],                     category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by many titles',   hasTicket: true, danger: D },
-  { name: 'IOS37', titleId: '0000000100000025', versions: [2070, 3609, 3612, 3869, 5662, 5663],                     category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS38', titleId: '0000000100000026', versions: [3610, 3867, 4124],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS40', titleId: '0000000100000028', versions: [3072],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS41', titleId: '0000000100000029', versions: [3091, 3348],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS43', titleId: '000000010000002b', versions: [3091, 3348],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS45', titleId: '000000010000002d', versions: [3091, 3348],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS46', titleId: '000000010000002e', versions: [3093, 3350, 3606],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS48', titleId: '0000000100000030', versions: [4124],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS50', titleId: '0000000100000032', versions: [5120],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS51', titleId: '0000000100000033', versions: [4864],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS52', titleId: '0000000100000034', versions: [5888],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: D },
-  { name: 'IOS53', titleId: '0000000100000035', versions: [5406, 5662, 5663],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by Wii Shop',      hasTicket: true, danger: D },
-  { name: 'IOS55', titleId: '0000000100000037', versions: [5406, 5662, 5663],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: D },
-  { name: 'IOS56', titleId: '0000000100000038', versions: [5405, 5661, 5662],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.3',hasTicket: true, danger: D },
-  { name: 'IOS57', titleId: '0000000100000039', versions: [5661, 5918, 5919],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB 2.0 support',       hasTicket: true, danger: D },
-  { name: 'IOS58', titleId: '000000010000003a', versions: [6175, 6176],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB 2.0 support',       hasTicket: true, danger: D },
-  { name: 'IOS59', titleId: '000000010000003b', versions: [8993, 9249],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB Ethernet support',  hasTicket: true, danger: D },
-  { name: 'IOS60', titleId: '000000010000003c', versions: [6174],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.1',hasTicket: true, danger: D },
-  { name: 'IOS61', titleId: '000000010000003d', versions: [5405, 5661, 5662],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'SD card support',       hasTicket: true, danger: D },
-  { name: 'IOS62', titleId: '000000010000003e', versions: [6430],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB support',            hasTicket: true, danger: D },
-  { name: 'IOS70', titleId: '0000000100000046', versions: [6687, 6943, 6944],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.2',hasTicket: true, danger: D },
-  { name: 'IOS80', titleId: '0000000100000050', versions: [6943, 6944],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.3',hasTicket: true, danger: D },
-  { name: 'IOS236',titleId: '00000001000000ec', versions: [65535],                                                  category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Homebrew IOS (Stub)',   hasTicket: false, danger: D },
+  { name: 'IOS4',  titleId: '0000000100000004', versions: [65280],                                                  category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS9',  titleId: '0000000100000009', versions: [520, 521, 778, 1034],                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS10', titleId: '000000010000000a', versions: [768],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS11', titleId: '000000010000000b', versions: [256],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS12', titleId: '000000010000000c', versions: [6, 11, 12, 269, 525, 526],                               category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS13', titleId: '000000010000000d', versions: [10, 15, 16, 273, 1031, 1032],                            category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS14', titleId: '000000010000000e', versions: [262, 263, 520, 1031, 1032],                              category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS15', titleId: '000000010000000f', versions: [257, 258, 259, 260, 265, 266, 523, 1031, 1032],          category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS16', titleId: '0000000100000010', versions: [512],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS17', titleId: '0000000100000011', versions: [517, 518, 775, 1032],                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS20', titleId: '0000000100000014', versions: [256],                                                    category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS21', titleId: '0000000100000015', versions: [514, 515, 516, 517, 522, 525, 782, 1039],                category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Base IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS22', titleId: '0000000100000016', versions: [780, 1037, 1294],                                        category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by Disc Channel',   hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS28', titleId: '000000010000001c', versions: [1293, 1550, 1807],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by many games',     hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS30', titleId: '000000010000001e', versions: [1037, 1039, 1040, 2576, 2816],                           category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS31', titleId: '000000010000001f', versions: [1037, 1039, 1040, 2576, 3088, 3092, 3349, 3607, 3608],   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS33', titleId: '0000000100000021', versions: [1040, 2832, 3088, 3092, 3349, 3607, 3608],               category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS34', titleId: '0000000100000022', versions: [1039, 3091, 3348, 3607, 3608],                           category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS35', titleId: '0000000100000023', versions: [1040, 3088, 3092, 3349, 3607, 3608],                     category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS36', titleId: '0000000100000024', versions: [1042, 3090, 3094, 3351, 3607, 3608],                     category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by many titles',   hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS37', titleId: '0000000100000025', versions: [2070, 3609, 3612, 3869, 5662, 5663],                     category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS38', titleId: '0000000100000026', versions: [3610, 3867, 4124],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS40', titleId: '0000000100000028', versions: [3072],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS41', titleId: '0000000100000029', versions: [3091, 3348],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS43', titleId: '000000010000002b', versions: [3091, 3348],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS45', titleId: '000000010000002d', versions: [3091, 3348],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS46', titleId: '000000010000002e', versions: [3093, 3350, 3606],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS48', titleId: '0000000100000030', versions: [4124],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS50', titleId: '0000000100000032', versions: [5120],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS51', titleId: '0000000100000033', versions: [4864],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS52', titleId: '0000000100000034', versions: [5888],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Stub IOS',               hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS53', titleId: '0000000100000035', versions: [5406, 5662, 5663],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by Wii Shop',      hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS55', titleId: '0000000100000037', versions: [5406, 5662, 5663],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Common game IOS',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS56', titleId: '0000000100000038', versions: [5405, 5661, 5662],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.3',hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS57', titleId: '0000000100000039', versions: [5661, 5918, 5919],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB 2.0 support',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS58', titleId: '000000010000003a', versions: [6175, 6176],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB 2.0 support',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS59', titleId: '000000010000003b', versions: [8993, 9249],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB Ethernet support',  hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS60', titleId: '000000010000003c', versions: [6174],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.1',hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS61', titleId: '000000010000003d', versions: [5405, 5661, 5662],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'SD card support',       hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS62', titleId: '000000010000003e', versions: [6430],                                                   category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'USB support',            hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS70', titleId: '0000000100000046', versions: [6687, 6943, 6944],                                       category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.2',hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS80', titleId: '0000000100000050', versions: [6943, 6944],                                             category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Used by System Menu 4.3',hasTicket: true, danger: IOS_DANGER },
+  { name: 'IOS236',titleId: '00000001000000ec', versions: [65535],                                                  category: CATEGORIES.IOS, region: REGIONS.ALL, description: 'Homebrew IOS (Stub)',   hasTicket: false, danger: IOS_DANGER },
 
   // ═══════════════════════════════════════════
   // System Menu (all versions per region)
   // ═══════════════════════════════════════════
-  { name: 'System Menu (USA)',  titleId: '0000000100000002', versions: [97, 193, 225, 257, 289, 353, 385, 417, 449, 481, 513],       category: CATEGORIES.SYSTEM, region: REGIONS.USA, description: 'Wii System Menu',        hasTicket: true, danger: S },
-  { name: 'System Menu (EUR)',  titleId: '0000000100000002', versions: [130, 162, 194, 226, 258, 290, 354, 386, 418, 450, 482, 514], category: CATEGORIES.SYSTEM, region: REGIONS.EUR, description: 'Wii System Menu',        hasTicket: true, danger: S },
-  { name: 'System Menu (JPN)',  titleId: '0000000100000002', versions: [128, 192, 224, 256, 288, 352, 384, 416, 448, 480, 512],      category: CATEGORIES.SYSTEM, region: REGIONS.JPN, description: 'Wii System Menu',        hasTicket: true, danger: S },
-  { name: 'System Menu (KOR)',  titleId: '0000000100000002', versions: [390, 454, 486, 518],                                         category: CATEGORIES.SYSTEM, region: REGIONS.KOR, description: 'Wii System Menu',        hasTicket: true, danger: S },
+  { name: 'System Menu (USA)',  titleId: '0000000100000002', versions: [97, 193, 225, 257, 289, 353, 385, 417, 449, 481, 513],       category: CATEGORIES.SYSTEM, region: REGIONS.USA, description: 'Wii System Menu',        hasTicket: true, danger: SYSMENU_DANGER },
+  { name: 'System Menu (EUR)',  titleId: '0000000100000002', versions: [130, 162, 194, 226, 258, 290, 354, 386, 418, 450, 482, 514], category: CATEGORIES.SYSTEM, region: REGIONS.EUR, description: 'Wii System Menu',        hasTicket: true, danger: SYSMENU_DANGER },
+  { name: 'System Menu (JPN)',  titleId: '0000000100000002', versions: [128, 192, 224, 256, 288, 352, 384, 416, 448, 480, 512],      category: CATEGORIES.SYSTEM, region: REGIONS.JPN, description: 'Wii System Menu',        hasTicket: true, danger: SYSMENU_DANGER },
+  { name: 'System Menu (KOR)',  titleId: '0000000100000002', versions: [390, 454, 486, 518],                                         category: CATEGORIES.SYSTEM, region: REGIONS.KOR, description: 'Wii System Menu',        hasTicket: true, danger: SYSMENU_DANGER },
   { name: 'BC',                 titleId: '0000000100000100', versions: [2, 4, 5, 6],                                                 category: CATEGORIES.SYSTEM, region: REGIONS.ALL, description: 'Backwards Compatibility', hasTicket: true, danger: 'System title — required for GameCube compatibility' },
   { name: 'MIOS',               titleId: '0000000100000101', versions: [4, 5, 8, 9, 10],                                             category: CATEGORIES.SYSTEM, region: REGIONS.ALL, description: 'GameCube Compatibility',  hasTicket: true, danger: 'System title — required for GameCube compatibility' },
 
@@ -295,8 +297,8 @@ export function importDatabaseXML(xmlText) {
  * @param {string} [platform='wii'] - Platform: 'wii', 'vwii', or 'dsi'
  * @returns {{ imported: number, categories: string[] }}
  */
-export function importNUSGetJSON(jsonText, platform = 'wii') {
-  const data = JSON.parse(jsonText);
+export function importNUSGetJSON(jsonOrText, platform = 'wii') {
+  const data = typeof jsonOrText === 'string' ? JSON.parse(jsonOrText) : jsonOrText;
 
   const regionNameMap = {
     'World': REGIONS.ALL,

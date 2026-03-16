@@ -9,6 +9,9 @@ import { getSignedHeaderOffset } from './lib/binary.js';
 import { isIOSTitle, getIOSNumber, patchIOS, PATCHES } from './lib/ios-patcher.js';
 import { parseNUSScript } from './lib/script-parser.js';
 import { createZip } from './lib/zip.js';
+import wiiDatabase from './data/wii-database.json';
+import vwiiDatabase from './data/vwii-database.json';
+import dsiDatabase from './data/dsi-database.json';
 
 // ─── Styles ───────────────────────────────────────────────
 const COLORS = {
@@ -141,6 +144,16 @@ export default function App() {
     };
     check();
   }, [proxyUrl]);
+
+  // Load the appropriate title database for the selected platform
+  useEffect(() => {
+    const databases = { wii: wiiDatabase, vwii: vwiiDatabase, dsi: dsiDatabase };
+    const db = databases[platform] || wiiDatabase;
+    try {
+      importNUSGetJSON(db, platform);
+      setDbVersion(v => v + 1);
+    } catch { /* keep existing database on error */ }
+  }, [platform]);
 
   // Lock body scroll when modal is open (use paddingRight to compensate for scrollbar removal)
   useEffect(() => {
