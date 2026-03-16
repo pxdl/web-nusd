@@ -880,7 +880,17 @@ export default function App() {
 
                   <button
                     style={styles.manualEntryLink}
-                    onClick={() => setManualEntry(false)}
+                    onClick={() => {
+                      setManualEntry(false);
+                      // Try to match the typed title ID to a database entry
+                      if (titleId.length === 16) {
+                        const match = lookupTitle(titleId);
+                        if (match) {
+                          setSelectedTitle(match);
+                          setAvailableVersions(match.versions || []);
+                        }
+                      }
+                    }}
                     disabled={isDownloading}
                   >
                     Select from database instead
