@@ -12,9 +12,9 @@ import { createZip } from './lib/zip.js';
 
 // ─── Styles ───────────────────────────────────────────────
 const COLORS = {
-  bg: '#0a0e17',
-  surface: '#111827',
-  surfaceLight: '#1a2236',
+  bg: '#080c14',
+  surface: '#0f1520',
+  surfaceLight: '#161e2e',
   accent: '#00d4ff',
   accentDim: '#006b80',
   accentGlow: 'rgba(0, 212, 255, 0.15)',
@@ -614,17 +614,17 @@ export default function App() {
   return (
     <div style={styles.root}>
       {/* ── Header ── */}
-      <header style={styles.header}>
+      <header className="nusd-header" style={styles.header}>
         <div style={styles.headerInner}>
           <div style={styles.logoArea}>
-            <div style={styles.logoIcon}>&#x2B21;</div>
+            <div className="nusd-logo-icon" style={styles.logoIcon}>&#x2B21;</div>
             <div>
-              <h1 style={styles.title}>Web NUS Downloader</h1>
+              <h1 className="nusd-title" style={styles.title}>Web NUS Downloader</h1>
               <p style={styles.subtitle}>Browser-based Nintendo Update Server client</p>
             </div>
           </div>
           <div style={styles.statusArea}>
-            <span style={{
+            <span className={`nusd-status-dot ${proxyStatus === 'ok' ? 'connected' : ''}`} style={{
               ...styles.statusDot,
               backgroundColor: proxyStatus === 'ok' ? COLORS.success
                 : proxyStatus === 'error' ? COLORS.error
@@ -647,10 +647,8 @@ export default function App() {
           ].map(tab => (
             <button
               key={tab.id}
-              style={{
-                ...styles.tab,
-                ...(mode === tab.id ? styles.tabActive : {}),
-              }}
+              className={`nusd-tab ${mode === tab.id ? 'active' : ''}`}
+              style={styles.tab}
               onClick={() => setMode(tab.id)}
             >
               {tab.label}
@@ -659,9 +657,9 @@ export default function App() {
         </div>
       </div>
 
-      <main style={styles.main}>
+      <main className="nusd-main" style={styles.main}>
         {/* ── Left Panel: Controls ── */}
-        <section style={styles.panel}>
+        <section className="nusd-panel" style={styles.panel}>
           {mode === 'download' && (
             <>
               <h2 style={styles.panelTitle}>Title Configuration</h2>
@@ -671,16 +669,19 @@ export default function App() {
                 <label style={styles.label}>Platform</label>
                 <div style={styles.toggleGroup}>
                   <button
+                    className={`nusd-toggle ${platform === 'wii' ? 'active' : ''}`}
                     style={{ ...styles.toggleBtn, ...(platform === 'wii' ? styles.toggleActive : {}) }}
                     onClick={() => setPlatform('wii')}
                     disabled={isDownloading}
                   >Wii</button>
                   <button
+                    className={`nusd-toggle ${platform === 'vwii' ? 'active' : ''}`}
                     style={{ ...styles.toggleBtn, ...(platform === 'vwii' ? styles.toggleActive : {}) }}
                     onClick={() => setPlatform('vwii')}
                     disabled={isDownloading}
                   >vWii</button>
                   <button
+                    className={`nusd-toggle ${platform === 'dsi' ? 'active' : ''}`}
                     style={{ ...styles.toggleBtn, ...(platform === 'dsi' ? styles.toggleActive : {}) }}
                     onClick={() => setPlatform('dsi')}
                     disabled={isDownloading}
@@ -702,6 +703,7 @@ export default function App() {
                     disabled={isDownloading}
                   />
                   <button
+                    className="nusd-btn-secondary"
                     style={styles.btnSecondary}
                     onClick={() => setShowDatabase(!showDatabase)}
                     disabled={isDownloading}
@@ -716,7 +718,7 @@ export default function App() {
 
               {/* Danger Warning */}
               {dangerWarning && (
-                <div style={styles.dangerBanner}>
+                <div className="nusd-danger-banner" style={styles.dangerBanner}>
                   <strong>Warning:</strong> {dangerWarning}
                 </div>
               )}
@@ -846,6 +848,7 @@ export default function App() {
                   ...styles.btnPrimary,
                   opacity: isDownloading || proxyStatus !== 'ok' ? 0.5 : 1,
                 }}
+                className="nusd-btn-primary"
                 onClick={handleDownload}
                 disabled={isDownloading || proxyStatus !== 'ok'}
               >
@@ -853,7 +856,7 @@ export default function App() {
               </button>
 
               {proxyStatus === 'error' && (
-                <div style={styles.errorBanner}>
+                <div className="nusd-error-banner" style={styles.errorBanner}>
                   Proxy server is not reachable. Make sure the server is running at {proxyUrl}
                 </div>
               )}
@@ -878,7 +881,7 @@ export default function App() {
 
               <div style={styles.fieldGroup}>
                 <label style={styles.label}>NUS Script File</label>
-                <button style={styles.btnSecondary} onClick={handleLoadScript} disabled={isDownloading}>
+                <button className="nusd-btn-secondary" style={styles.btnSecondary} onClick={handleLoadScript} disabled={isDownloading}>
                   Load .nus Script
                 </button>
                 <span style={styles.hint}>
@@ -918,6 +921,7 @@ export default function App() {
                   ...styles.btnPrimary,
                   opacity: isDownloading || batchQueue.length === 0 || proxyStatus !== 'ok' ? 0.5 : 1,
                 }}
+                className="nusd-btn-primary"
                 onClick={handleBatchDownload}
                 disabled={isDownloading || batchQueue.length === 0 || proxyStatus !== 'ok'}
               >
@@ -946,7 +950,7 @@ export default function App() {
 
               <div style={styles.fieldGroup}>
                 <label style={styles.label}>Unpack WAD</label>
-                <button style={styles.btnSecondary} onClick={handleUnpackWAD}>
+                <button className="nusd-btn-secondary" style={styles.btnSecondary} onClick={handleUnpackWAD}>
                   Select WAD File
                 </button>
                 <span style={styles.hint}>Extract cert chain, ticket, TMD, and contents from a WAD file.</span>
@@ -987,10 +991,10 @@ export default function App() {
         </section>
 
         {/* ── Right Panel: Log + Info ── */}
-        <section style={styles.panelWide}>
+        <section className="nusd-panel" style={styles.panelWide}>
           {/* TMD Info */}
           {tmdInfo && (
-            <div style={styles.infoCard}>
+            <div className="nusd-info-card" style={styles.infoCard}>
               <h3 style={styles.infoTitle}>Title Info</h3>
               <div style={styles.infoGrid}>
                 <InfoRow label="Title ID" value={tmdInfo.titleId.toUpperCase()} />
@@ -1011,7 +1015,7 @@ export default function App() {
                 {progress.pct > 0 && ` — ${progress.pct}%`}
               </div>
               <div style={styles.progressBar}>
-                <div style={{
+                <div className="nusd-progress-fill" style={{
                   ...styles.progressFill,
                   width: progress.pct > 0
                     ? `${progress.pct}%`
@@ -1023,14 +1027,14 @@ export default function App() {
 
           {/* Log Output */}
           <h3 style={styles.panelTitle}>Output Log</h3>
-          <div ref={logRef} style={styles.logBox}>
+          <div ref={logRef} className="nusd-log" style={styles.logBox}>
             {logs.length === 0 && (
               <div style={styles.logEmpty}>
                 Ready. Select a title and press "Start NUS Download".
               </div>
             )}
             {logs.map((entry, i) => (
-              <div key={i} style={{
+              <div key={i} className="nusd-log-line" style={{
                 ...styles.logLine,
                 color: entry.type === 'error' ? COLORS.error
                   : entry.type === 'warning' ? COLORS.warning
@@ -1056,8 +1060,8 @@ export default function App() {
 
       {/* ── Database Modal ── */}
       {showDatabase && (
-        <div style={styles.modalOverlay} onClick={() => setShowDatabase(false)}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className="nusd-modal-overlay" style={styles.modalOverlay} onClick={() => setShowDatabase(false)}>
+          <div className="nusd-modal" style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h2 style={styles.modalTitle}>Title Database</h2>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -1093,6 +1097,7 @@ export default function App() {
               {filteredTitles.map((title, i) => (
                 <div
                   key={i}
+                  className="nusd-db-row"
                   style={{
                     ...styles.dbRow,
                     ...(title.danger ? { borderLeft: `3px solid ${COLORS.danger}` } : {}),
@@ -1101,7 +1106,7 @@ export default function App() {
                 >
                   <div style={styles.dbRowName}>
                     {title.name}
-                    {title.danger && <span style={styles.dangerTag}>CAUTION</span>}
+                    {title.danger && <span className="nusd-tag-danger" style={styles.dangerTag}>CAUTION</span>}
                     {title.hasTicket === false && <span style={styles.noTicketTag}>No Ticket</span>}
                   </div>
                   <div style={styles.dbRowMeta}>
@@ -1127,7 +1132,7 @@ export default function App() {
       )}
 
       {/* ── Footer ── */}
-      <footer style={styles.footer}>
+      <footer className="nusd-footer" style={styles.footer}>
         <span>Web NUS Downloader — Open Source (GPL-3.0)</span>
         <span style={styles.textDim}>Based on NUS Downloader by WB3000 / hamachi-mp / WiiDatabase</span>
       </footer>
@@ -1150,7 +1155,7 @@ function Checkbox({ checked, onChange, label, disabled }) {
         disabled={disabled}
         style={{ display: 'none' }}
       />
-      <span style={{
+      <span className={`nusd-checkbox-box ${checked ? 'checked' : ''}`} style={{
         ...styles.checkboxBox,
         backgroundColor: checked ? COLORS.accent : 'transparent',
         borderColor: checked ? COLORS.accent : COLORS.textDim,
@@ -1193,7 +1198,7 @@ function downloadBlob(data, filename) {
 // ─── Styles ───────────────────────────────────────────────
 const styles = {
   root: {
-    fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", monospace',
+    fontFamily: '"Fira Code", "JetBrains Mono", "SF Mono", monospace',
     backgroundColor: COLORS.bg,
     color: COLORS.text,
     minHeight: '100vh',
@@ -1226,10 +1231,11 @@ const styles = {
   },
   title: {
     margin: 0,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 700,
+    fontFamily: '"Rajdhani", sans-serif',
     color: COLORS.accent,
-    letterSpacing: '0.02em',
+    letterSpacing: '0.04em',
   },
   subtitle: {
     margin: 0,
@@ -1315,11 +1321,12 @@ const styles = {
   },
   panelTitle: {
     margin: 0,
-    fontSize: 13,
-    fontWeight: 600,
+    fontSize: 15,
+    fontWeight: 700,
+    fontFamily: '"Rajdhani", sans-serif',
     color: COLORS.accent,
     textTransform: 'uppercase',
-    letterSpacing: '0.08em',
+    letterSpacing: '0.1em',
   },
   fieldGroup: {
     display: 'flex',
