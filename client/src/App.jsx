@@ -218,6 +218,7 @@ export default function App() {
     setAvailableVersions(title.versions || []);
     setSelectedTitle(title);
     setManualEntry(false);
+    setTmdInfo(null);
     if (title.versions.length > 0) {
       setVersion(String(title.versions[title.versions.length - 1]));
     } else {
@@ -270,6 +271,13 @@ export default function App() {
 
     if (!packWad && !keepEncrypted && !decryptContents) {
       log('Error: Select at least one output option (Pack WAD, Keep encrypted, or Decrypt).', 'error');
+      return;
+    }
+
+    // Warn if database says no ticket and user expects ticket-dependent output
+    if (selectedTitle?.hasTicket === false && !keepEncrypted && (packWad || decryptContents)) {
+      log('Warning: This title has no ticket available. Only "Keep encrypted contents" will produce output.', 'warning');
+      log('Enable "Keep encrypted contents (ZIP)" or the download will produce no files.', 'warning');
       return;
     }
 
@@ -531,7 +539,19 @@ export default function App() {
       }
 
       setProgress(null);
-      log('Download complete!', 'success');
+
+      // Check if anything was actually saved
+      const producedOutput = (packWad && ticket) || keepEncrypted || (decryptContents && ticket && commonKeyHex.trim());
+      if (!producedOutput) {
+        if (!ticket) {
+          log('No output produced — ticket was not available for this title.', 'warning');
+          log('Try enabling "Keep encrypted contents (ZIP)" to save raw files.', 'warning');
+        } else {
+          log('No output produced — check your output options.', 'warning');
+        }
+      } else {
+        log('Download complete!', 'success');
+      }
 
     } catch (err) {
       log(`Error: ${err.message}`, 'error');
@@ -881,7 +901,7 @@ export default function App() {
                       placeholder="0000000100000002"
                       maxLength={16}
                       value={titleId}
-                      onChange={e => { setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, '')); setAvailableVersions([]); setSelectedTitle(null); }}
+                      onChange={e => { setTitleId(e.target.value.replace(/[^0-9a-fA-F]/g, '')); setAvailableVersions([]); setSelectedTitle(null); setTmdInfo(null); }}
                       disabled={isDownloading}
                     />
                     {titleId.length > 0 && titleId.length < 16 && (
