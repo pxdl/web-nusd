@@ -162,6 +162,9 @@ export default function App() {
   useEffect(() => {
     const databases = { wii: wiiDatabase, vwii: vwiiDatabase, dsi: dsiDatabase };
     const db = databases[platform] || wiiDatabase;
+    // Clear stale selection from previous platform's database
+    setSelectedTitle(null);
+    setAvailableVersions([]);
     try {
       importNUSGetJSON(db, platform);
       setDbVersion(v => v + 1);
@@ -184,7 +187,7 @@ export default function App() {
     };
   }, [showDatabase]);
 
-  // Check for danger warnings when title ID changes
+  // Check for danger warnings when title/version/database changes
   useEffect(() => {
     if (titleId.length === 16) {
       const title = lookupTitle(titleId, version);
@@ -192,7 +195,7 @@ export default function App() {
     } else {
       setDangerWarning(null);
     }
-  }, [titleId]);
+  }, [titleId, version, dbVersion]);
 
   // ─── Database Selection ─────────────────────
   const selectTitle = (title) => {
