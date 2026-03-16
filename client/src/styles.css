@@ -190,45 +190,97 @@ button:disabled {
      Phase 5: "-kyo!"    — rapid trill oscillation
      Phase 6: (silence)  — fade + rest before next cycle
    Total: ~9s cycle. Source: GlowWii / larsenv / RiiConnect24 */
+/* The LED strip — bright concentrated core */
 .nusd-header::after {
   content: '';
   position: absolute;
-  bottom: -1px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: min(280px, 40%);
-  height: 2px;
-  background: var(--accent);
-  border-radius: 2px;
+  width: min(420px, 55%);
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--accent) 20%,
+    #4de0ff 40%,
+    #fff 50%,
+    #4de0ff 60%,
+    var(--accent) 80%,
+    transparent
+  );
+  border-radius: 3px;
   animation: uguisu 9s ease-in-out infinite;
+  z-index: 2;
+}
+
+/* Ambient glow halo — soft light spill beneath the LED */
+.nusd-header::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(500px, 65%);
+  height: 14px;
+  background: radial-gradient(
+    ellipse at center top,
+    rgba(0, 158, 194, 0.25) 0%,
+    rgba(0, 158, 194, 0.08) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  animation: uguisu 9s ease-in-out infinite;
+  z-index: 1;
+  pointer-events: none;
 }
 
 @keyframes uguisu {
   /* Phase 1: "Ho~" — introductory whistle pulse (0–5.3%) */
-  0%    { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
-  2.6%  { opacity: 0.50; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
-  5.3%  { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+  0%    { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
+  2.6%  { opacity: 0.50; box-shadow:
+            0 0 8px rgba(0, 158, 194, 0.5),
+            0 0 20px rgba(0, 158, 194, 0.3),
+            0 0 40px rgba(0, 158, 194, 0.1); }
+  5.3%  { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 
   /* Phase 2: "-ho-" — softer secondary pulse (5.3–8.4%) */
-  6.8%  { opacity: 0.32; box-shadow: 0 0 4px var(--accent-glow-strong), 0 0 10px var(--accent-glow); }
-  8.4%  { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+  6.8%  { opacity: 0.32; box-shadow:
+            0 0 6px rgba(0, 158, 194, 0.4),
+            0 0 16px rgba(0, 158, 194, 0.2); }
+  8.4%  { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 
   /* Phase 3: (breath) — dim pause (8.4–21.7%) */
-  21.7% { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+  21.7% { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 
   /* Phase 4: "ho~~ke~~" — slow crescendo + sustained hold (21.7–59.7%) */
-  35%   { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
-  59.7% { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  35%   { opacity: 0.47; box-shadow:
+            0 0 8px rgba(0, 158, 194, 0.5),
+            0 0 24px rgba(0, 158, 194, 0.3),
+            0 0 48px rgba(0, 158, 194, 0.1); }
+  59.7% { opacity: 0.47; box-shadow:
+            0 0 8px rgba(0, 158, 194, 0.5),
+            0 0 24px rgba(0, 158, 194, 0.3),
+            0 0 48px rgba(0, 158, 194, 0.1); }
 
   /* Phase 5: "-kyo!" — rapid trill (59.7–64.1%) */
-  60.8% { opacity: 0.25; box-shadow: 0 0 3px var(--accent-glow); }
-  61.9% { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
-  63.0% { opacity: 0.25; box-shadow: 0 0 3px var(--accent-glow); }
-  64.1% { opacity: 0.47; box-shadow: 0 0 6px var(--accent-glow-strong), 0 0 16px var(--accent-glow); }
+  60.8% { opacity: 0.25; box-shadow:
+            0 0 4px rgba(0, 158, 194, 0.3),
+            0 0 12px rgba(0, 158, 194, 0.15); }
+  61.9% { opacity: 0.47; box-shadow:
+            0 0 8px rgba(0, 158, 194, 0.5),
+            0 0 24px rgba(0, 158, 194, 0.3),
+            0 0 48px rgba(0, 158, 194, 0.1); }
+  63.0% { opacity: 0.25; box-shadow:
+            0 0 4px rgba(0, 158, 194, 0.3),
+            0 0 12px rgba(0, 158, 194, 0.15); }
+  64.1% { opacity: 0.47; box-shadow:
+            0 0 8px rgba(0, 158, 194, 0.5),
+            0 0 24px rgba(0, 158, 194, 0.3),
+            0 0 48px rgba(0, 158, 194, 0.1); }
 
   /* Phase 6: fade + rest (64.1–100%) */
-  65.2% { opacity: 0.12; box-shadow: 0 0 2px var(--accent-glow); }
-  100%  { opacity: 0.06; box-shadow: 0 0 2px var(--accent-glow); }
+  65.2% { opacity: 0.12; box-shadow: 0 0 4px var(--accent-glow); }
+  100%  { opacity: 0.06; box-shadow: 0 0 3px var(--accent-glow); }
 }
 
 .nusd-logo-icon {
